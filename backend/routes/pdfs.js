@@ -12,6 +12,7 @@ import {
   optionalAuth,
 } from "../middleware/auth.js";
 import { deductCredits } from "../services/credits.js";
+import User from "../models/User.js";
 
 const router = express.Router();
 
@@ -383,7 +384,8 @@ router.post("/:id/favorite", protect, async (req, res) => {
   }
 });
 
-/* ------------------------ Download (deduct credits) --------------------- */
+// Add this to routes/pdfs.js - Replace the existing download route
+
 router.post("/:id/download", protect, async (req, res) => {
   try {
     const COST = 5;
@@ -391,13 +393,36 @@ router.post("/:id/download", protect, async (req, res) => {
     if (!pdf)
       return res.status(404).json({ success: false, error: "PDF not found" });
 
+    // Deduct credits
     const remaining = await deductCredits(
       req.user,
       COST,
       `Download "${pdf.title || pdf.filename}"`
     );
+
+    // Update download count
     pdf.downloads = (pdf.downloads || 0) + 1;
     await pdf.save();
+
+    // ✅ Track downloaded PDF in user's profile
+    const user = await User.findById(req.user.id);
+    if (user) {
+      // Check if already downloaded (avoid duplicates)
+      const alreadyDownloaded = user.downloadedPDFs.some(
+        (dp) => dp.pdfUrl === pdf.path
+      );
+
+      if (!alreadyDownloaded) {
+        user.downloadedPDFs.push({
+          postId: pdf._id,
+          pdfUrl: pdf.path,
+          fileName: pdf.title || pdf.filename,
+          coverImage: pdf.coverImage,
+          downloadedAt: new Date(),
+        });
+        await user.save();
+      }
+    }
 
     res.json({
       success: true,

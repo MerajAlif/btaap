@@ -11,7 +11,7 @@ import ImageLightbox from "@/components/ImageLightbox";
 
 export default function UserPosts() {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,15 +56,14 @@ export default function UserPosts() {
 
     try {
       const params = {
-        status: filter !== "all" ? filter : undefined,
         page: requestedPage,
         limit,
       };
+      if (filter !== "all") {
+        params.status = filter;
+      }
 
-      console.log("Loading posts for user:", userId); // Debug
       const data = await getUserPosts(userId, params);
-      console.log("Received data:", data); // Debug
-
       const newPosts = data.posts || [];
 
       setPosts((prev) =>
@@ -210,7 +209,7 @@ export default function UserPosts() {
                             className="flex gap-2"
                             onClick={(e) => e.preventDefault()}
                           >
-                            <Button
+                           {/* <Button
                               size="sm"
                               variant="ghost"
                               onClick={(e) => {
@@ -222,7 +221,7 @@ export default function UserPosts() {
                             >
                               <Edit2 className="w-4 h-4" />
                               Edit
-                            </Button>
+                            </Button> */}
 
                             <Button
                               size="sm"

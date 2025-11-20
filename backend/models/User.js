@@ -14,6 +14,7 @@ const downloadedPdfSchema = new mongoose.Schema({
   postId: { type: mongoose.Schema.Types.ObjectId, ref: "Post" },
   pdfUrl: { type: String, trim: true },
   fileName: { type: String, trim: true },
+  coverImage: { type: String, trim: true },
   downloadedAt: { type: Date, default: Date.now },
 });
 

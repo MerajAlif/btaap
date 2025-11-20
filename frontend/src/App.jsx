@@ -12,6 +12,7 @@ import MentorApproval from "@/pages/admin/MentorApproval.jsx";
 import AdminPaymentPanel from "@/components/AdminPaymentPanel.jsx";
 import Profile from "@/pages/Profile.jsx";
 import CreditDashboard from "@/components/CreditDashboard.jsx";
+import Downloads from "@/pages/Downloads.jsx";
 
 import PostsFeed from "@/pages/PostsFeed.jsx";
 import CreatePost from "@/pages/CreatePost.jsx";
@@ -45,6 +46,7 @@ function App() {
             <Route path="/credits" element={<CreditDashboard />} />
             <Route path="/posts/create" element={<CreatePost />} />
             <Route path="/my-posts" element={<UserPosts />} />
+            <Route path="/downloads" element={<Downloads />} />
           </Route>
 
           {/* Mentor-only */}
