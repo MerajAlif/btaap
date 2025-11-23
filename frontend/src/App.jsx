@@ -13,11 +13,19 @@ import AdminPaymentPanel from "@/components/AdminPaymentPanel.jsx";
 import Profile from "@/pages/Profile.jsx";
 import CreditDashboard from "@/components/CreditDashboard.jsx";
 import Downloads from "@/pages/Downloads.jsx";
-
+import Home from "@/pages/Home.jsx";
 import PostsFeed from "@/pages/PostsFeed.jsx";
 import CreatePost from "@/pages/CreatePost.jsx";
 import PostDetail from "@/pages/PostDetail.jsx";
 import UserPosts from "@/pages/UserPosts.jsx";
+
+// NEW: Community pages
+import Communities from "@/pages/Communities.jsx";
+import CommunityDetail from "@/pages/CommunityDetail.jsx";
+import MyCommunities from "@/pages/MyCommunities.jsx";
+import CreateCommunity from "@/pages/CreateCommunity.jsx";
+import MentorDashboard from "@/pages/MentorDashboard.jsx";
+import ApplyMentor from "@/pages/ApplyMentor.jsx";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -29,12 +37,17 @@ function App() {
       <Navbar />
       <main className="container mx-auto px-4 py-8">
         <Routes>
-          {/* main app pages */}
-          <Route path="/" element={<PDFStorage />} />
+          {/* Main app pages */}
+          <Route path="/" element={<Home />} />
+          <Route path="/library" element={<PDFStorage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
+
+          {/* Communities - Public */}
+          <Route path="/communities" element={<Communities />} />
+          <Route path="/communities/:id" element={<CommunityDetail />} />
 
           {/* Solving hub - public listing and post detail */}
           <Route path="/posts" element={<PostsFeed />} />
@@ -47,11 +60,18 @@ function App() {
             <Route path="/posts/create" element={<CreatePost />} />
             <Route path="/my-posts" element={<UserPosts />} />
             <Route path="/downloads" element={<Downloads />} />
+            
+            {/* Student: Apply to become mentor */}
+            <Route path="/apply-mentor" element={<ApplyMentor />} />
+            
+            {/* Student: My joined communities */}
+            <Route path="/my-communities" element={<MyCommunities />} />
           </Route>
 
-          {/* Mentor-only */}
+          {/* Mentor-only (approved) */}
           <Route element={<ProtectedRoute requireApprovedMentor />}>
-            {/* <Route path="/mentor/dashboard" element={<MentorDashboard />} /> */}
+            <Route path="/mentor/dashboard" element={<MentorDashboard />} />
+            <Route path="/communities/create" element={<CreateCommunity />} />
           </Route>
 
           {/* Admin-only */}
@@ -64,7 +84,7 @@ function App() {
             <Route path="/admin/payments" element={<AdminPaymentPanel />} />
           </Route>
 
-          {/* fallback */}
+          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

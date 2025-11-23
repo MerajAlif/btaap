@@ -1,4 +1,4 @@
-// server.js
+// server.js (Updated with new routes)
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -10,6 +10,8 @@ import creditRoutes from "./routes/credits.js";
 import postRoutes from "./routes/posts.js";
 import commentRoutes from "./routes/comments.js";
 import uploadRoutes from "./routes/upload.js";
+import communityRoutes from "./routes/communities.js";
+import profileRoutes from "./routes/profiles.js";
 import path from "path";
 import fs from "fs";
 
@@ -42,15 +44,22 @@ app.use("/api/credits", creditRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/communities", communityRoutes);
+app.use("/api/profiles", profileRoutes);
 
 // Root route for health check
 app.get("/", (req, res) => {
   res.json({
-    message: "PDF MERN Backend Running!",
+    message: "PDF MERN Backend with Communities Running!",
     endpoints: {
       auth: "/api/auth",
       pdfs: "/api/pdfs",
       payments: "/api/payments",
+      credits: "/api/credits",
+      posts: "/api/posts",
+      comments: "/api/comments",
+      communities: "/api/communities",
+      profiles: "/api/profiles",
     },
   });
 });
@@ -95,5 +104,6 @@ app.listen(PORT, () => {
   console.log(`   - Credits: http://localhost:${PORT}/api/credits`);
   console.log(`   - Posts: http://localhost:${PORT}/api/posts`);
   console.log(`   - Comments: http://localhost:${PORT}/api/comments`);
-  console.log(`   - Upload: http://localhost:${PORT}/api/upload`);
+  console.log(`   - Communities: http://localhost:${PORT}/api/communities`);
+  console.log(`   - Profiles: http://localhost:${PORT}/api/profiles`);
 });

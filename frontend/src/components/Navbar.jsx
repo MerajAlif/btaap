@@ -1,4 +1,4 @@
-// src/components/Navbar.jsx
+// src/components/Navbar.jsx - UPDATED WITH COMMUNITIES
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -23,11 +23,18 @@ import {
   ChevronDown,
   MessageSquare,
   Download,
+  BookOpen,
+  Users,
+  LayoutDashboard,
+  Award,
+  Sparkles,
 } from "lucide-react";
 
 const navItems = [
   { label: "Home", href: "/" },
-  { label: "Solving Hub", href: "/posts" }, // <-- new menu item
+  { label: "Library", href: "/library" },
+  { label: "Communities", href: "/communities" },
+  { label: "Solving Hub", href: "/posts" },
   { label: "Pricing", href: "/pricing" },
 ];
 
@@ -36,7 +43,7 @@ const baseLink =
 const activeLink = "bg-accent text-accent-foreground";
 
 export default function Navbar() {
-  const { user, isAdmin, isPendingMentor, logout } = useAuth();
+  const { user, isAdmin, isApprovedMentor, isPendingMentor, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -49,7 +56,8 @@ export default function Navbar() {
       <div className="container flex h-16 items-center justify-between px-4 mx-auto">
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2">
-          <div className="font-bold text-xl">Btaap</div>
+          <BookOpen className="w-6 h-6 text-emerald-600" />
+          <div className="font-bold text-xl text-emerald-900">Btaap</div>
         </Link>
 
         {/* Desktop Menu */}
@@ -94,18 +102,75 @@ export default function Navbar() {
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium">{user.name}</p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
-                    <p className="text-xs text-muted-foreground capitalize">
-                      Role: {user.role}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground capitalize">
+                        Role: {user.role}
+                      </p>
+                      {user.role === "mentor" && (
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          user.approvalStatus === "approved" 
+                            ? "bg-green-100 text-green-700" 
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}>
+                          {user.approvalStatus}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+
+                {/* ✅ Profile */}
                 <DropdownMenuItem asChild>
                   <Link to="/profile" className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </Link>
                 </DropdownMenuItem>
+
+                {/* ✅ Credits */}
+                <DropdownMenuItem asChild>
+                  <Link to="/credits" className="cursor-pointer">
+                    <Coins className="mr-2 h-4 w-4" />
+                    Credits ({user.credits || 0})
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                {/* ✅ STUDENT SPECIFIC */}
+                {user.role === "student" && (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link to="/my-communities" className="cursor-pointer">
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        My Communities
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/apply-mentor" className="cursor-pointer">
+                        <Award className="mr-2 h-4 w-4 text-amber-600" />
+                        <span className="text-amber-600 font-medium">Become a Mentor</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {/* ✅ MENTOR SPECIFIC */}
+                {isApprovedMentor && (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link to="/mentor/dashboard" className="cursor-pointer">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Mentor Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                <DropdownMenuSeparator />
+
+                {/* Posts & Downloads */}
                 <DropdownMenuItem asChild>
                   <Link to="/my-posts" className="cursor-pointer">
                     <MessageSquare className="mr-2 h-4 w-4" />
@@ -118,12 +183,20 @@ export default function Navbar() {
                     Downloads
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/credits" className="cursor-pointer">
-                    <Coins className="mr-2 h-4 w-4" />
-                    Credits
-                  </Link>
-                </DropdownMenuItem>
+
+                {/* ✅ ADMIN */}
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin/mentors" className="cursor-pointer">
+                        <Users className="mr-2 h-4 w-4" />
+                        Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
@@ -145,16 +218,20 @@ export default function Navbar() {
 
         {/* Mobile Menu */}
         <div className="md:hidden flex items-center gap-2">
-          {navItems.map((item) => (
-            <Button key={item.href} asChild variant="ghost" size="sm">
-              <Link to={item.href}>{item.label}</Link>
-            </Button>
-          ))}
-          {isAdmin && (
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/mentors">Admin</Link>
-            </Button>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                Menu <ChevronDown className="ml-1 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {navItems.map((item) => (
+                <DropdownMenuItem key={item.href} asChild>
+                  <Link to={item.href}>{item.label}</Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {user ? (
             <DropdownMenu>
@@ -183,6 +260,25 @@ export default function Navbar() {
                     Credits
                   </Link>
                 </DropdownMenuItem>
+
+                {user.role === "student" && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/my-communities">
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      My Communities
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+
+                {isApprovedMentor && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/mentor/dashboard">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Mentor Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
