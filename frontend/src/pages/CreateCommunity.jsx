@@ -1,17 +1,17 @@
-// src/pages/CreateCommunity.jsx
+// src/pages/CreateCommunity.jsx - COMPLETE FIXED VERSION
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createCommunity } from "@/lib/communityApi";
 import useAuth from "@/hooks/useAuth";
 import { Plus, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
-import { Link } from "react-router-dom";
 
 export default function CreateCommunity() {
   const { user, refreshMe } = useAuth();
@@ -44,7 +44,6 @@ export default function CreateCommunity() {
     setError("");
     setSuccess("");
 
-    // ✅ Check credits before submitting
     const CREATION_COST = 25;
     if (user.credits < CREATION_COST) {
       setError(`You need ${CREATION_COST} credits to create a community. You have ${user.credits} credits.`);
@@ -52,7 +51,6 @@ export default function CreateCommunity() {
       return;
     }
 
-    // Confirm with user
     const confirmed = window.confirm(
       `Creating a community will cost ${CREATION_COST} credits. You currently have ${user.credits} credits. Continue?`
     );
@@ -63,7 +61,6 @@ export default function CreateCommunity() {
     }
 
     try {
-      // Build payload
       const payload = {
         name: form.name.trim(),
         description: form.description.trim(),
@@ -82,7 +79,6 @@ export default function CreateCommunity() {
       const data = await createCommunity(payload);
       setSuccess(data.message || "Community created successfully!");
       
-      // Refresh user data to update credits
       await refreshMe();
       
       setTimeout(() => {
@@ -95,7 +91,6 @@ export default function CreateCommunity() {
     }
   };
 
-  // Check authorization
   if (user?.role !== "mentor" || user?.approvalStatus !== "approved") {
     return (
       <div className="max-w-2xl mx-auto p-4">
@@ -111,7 +106,6 @@ export default function CreateCommunity() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-6">
       <div className="max-w-3xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-purple-900 flex items-center gap-3">
@@ -121,7 +115,6 @@ export default function CreateCommunity() {
             <p className="text-purple-700 mt-1">
               Build a space for your students to learn and grow
             </p>
-            {/* ✅ Credit Info */}
             <div className="mt-2 flex items-center gap-2">
               <Badge variant="secondary" className="bg-amber-100 text-amber-800">
                 Cost: 25 credits
@@ -143,7 +136,6 @@ export default function CreateCommunity() {
           </Button>
         </div>
 
-        {/* Messages */}
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
@@ -156,7 +148,6 @@ export default function CreateCommunity() {
           </Alert>
         )}
 
-        {/* ✅ Insufficient Credits Warning */}
         {user?.credits < 25 && (
           <Alert className="bg-red-50 border-red-200">
             <AlertCircle className="w-4 h-4 text-red-600" />
@@ -170,14 +161,12 @@ export default function CreateCommunity() {
           </Alert>
         )}
 
-        {/* Form */}
         <form onSubmit={handleSubmit}>
           <Card className="border-purple-200">
             <CardHeader>
               <CardTitle>Community Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Name */}
               <div className="space-y-2">
                 <Label htmlFor="name">
                   Community Name <span className="text-red-500">*</span>
@@ -193,7 +182,6 @@ export default function CreateCommunity() {
                 />
               </div>
 
-              {/* Description */}
               <div className="space-y-2">
                 <Label htmlFor="description">
                   Description <span className="text-red-500">*</span>
@@ -213,7 +201,6 @@ export default function CreateCommunity() {
                 </p>
               </div>
 
-              {/* Category */}
               <div className="space-y-2">
                 <Label htmlFor="category">
                   Category <span className="text-red-500">*</span>
@@ -228,7 +215,6 @@ export default function CreateCommunity() {
                 />
               </div>
 
-              {/* Tags */}
               <div className="space-y-2">
                 <Label htmlFor="tags">Tags (optional)</Label>
                 <Input
@@ -243,7 +229,6 @@ export default function CreateCommunity() {
                 </p>
               </div>
 
-              {/* Cover Image URL */}
               <div className="space-y-2">
                 <Label htmlFor="coverImage">Cover Image URL (optional)</Label>
                 <Input
@@ -256,7 +241,6 @@ export default function CreateCommunity() {
                 />
               </div>
 
-              {/* Join Cost */}
               <div className="space-y-2">
                 <Label htmlFor="joinCost">Join Cost (Credits)</Label>
                 <Input
@@ -273,7 +257,6 @@ export default function CreateCommunity() {
                 </p>
               </div>
 
-              {/* Max Members */}
               <div className="space-y-2">
                 <Label htmlFor="maxMembers">Max Members (optional)</Label>
                 <Input
@@ -287,7 +270,6 @@ export default function CreateCommunity() {
                 />
               </div>
 
-              {/* Settings */}
               <div className="space-y-4 pt-4 border-t border-purple-100">
                 <h3 className="font-semibold text-gray-900">Settings</h3>
                 
@@ -324,7 +306,6 @@ export default function CreateCommunity() {
                 </div>
               </div>
 
-              {/* Submit */}
               <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
