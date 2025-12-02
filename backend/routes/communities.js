@@ -7,14 +7,13 @@ import {
   protect,
   authorize,
   requireMentorApproval,
+  optionalAuth
 } from "../middleware/auth.js";
 import { deductCredits } from "../services/credits.js";
 
 const router = express.Router();
 
-// ========== PUBLIC ROUTES ==========
 
-// Get all active communities (with filters) - MUST BE BEFORE /:id
 router.get("/", async (req, res) => {
   try {
     const {
@@ -107,8 +106,23 @@ router.get(
 
 // ========== SINGLE COMMUNITY ROUTE ==========
 
+// Get community members
+router.get("/:id/members", protect, async (req, res) => {
+  try {
+    const memberships = await Membership.find({
+      community: req.params.id,
+      status: "approved",
+    }).populate("student", "name profile.avatar");
+
+    res.json({ success: true, members: memberships.map(m => m.student) });
+  } catch (error) {
+    console.error("Get members error:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+});
+
 // Get single community details
-router.get("/:id", async (req, res) => {
+router.get("/:id", optionalAuth, async (req, res) => {
   try {
     const community = await Community.findById(req.params.id).populate(
       "mentor",
@@ -121,7 +135,23 @@ router.get("/:id", async (req, res) => {
         .json({ success: false, error: "Community not found" });
     }
 
-    res.json({ success: true, community });
+    let membershipStatus = "none";
+    if (req.user) {
+      const membership = await Membership.findOne({
+        student: req.user._id,
+        community: req.params.id,
+      });
+      console.log("CommunityDetail Membership Check:", {
+        student: req.user._id,
+        community: req.params.id,
+        membership: membership
+      });
+      if (membership) {
+        membershipStatus = membership.status;
+      }
+    }
+
+    res.json({ success: true, community, membershipStatus });
   } catch (error) {
     console.error("Get community error:", error);
     res.status(500).json({ success: false, error: "Server error" });
@@ -130,20 +160,26 @@ router.get("/:id", async (req, res) => {
 
 // ========== CREATE COMMUNITY (WITH CREDIT DEDUCTION) ==========
 
-// Create community (approved mentors only) - WITH CREDIT DEDUCTION
+// Create community (Mentors and Students) - WITH CREDIT DEDUCTION
 router.post(
   "/",
   protect,
-  authorize("mentor"),
-  requireMentorApproval,
+  // Removed authorize("mentor") to allow students
   async (req, res) => {
     try {
+      // If mentor, check approval
+      if (req.user.role === "mentor" && req.user.approvalStatus !== "approved") {
+        return res.status(403).json({
+          success: false,
+          error: "Your mentor account is pending approval",
+        });
+      }
+
       const {
         name,
         description,
         category,
         tags,
-        joinCost,
         maxMembers,
         coverImage,
         settings,
@@ -157,29 +193,29 @@ router.post(
       }
 
       // ✅ Check and deduct credits
-      const COMMUNITY_CREATION_COST = 25;
-      const mentor = await User.findById(req.user._id);
+      const COMMUNITY_CREATION_COST = 10; // Fixed cost
+      const user = await User.findById(req.user._id);
 
-      if (!mentor) {
+      if (!user) {
         return res
           .status(404)
           .json({ success: false, error: "User not found" });
       }
 
-      // Check if mentor has enough credits
-      if (mentor.credits < COMMUNITY_CREATION_COST) {
+      // Check if user has enough credits
+      if (user.credits < COMMUNITY_CREATION_COST) {
         return res.status(403).json({
           success: false,
-          error: `Insufficient credits. You need ${COMMUNITY_CREATION_COST} credits to create a community. You have ${mentor.credits} credits.`,
+          error: `Insufficient credits. You need ${COMMUNITY_CREATION_COST} credits to create a community. You have ${user.credits} credits.`,
           code: "INSUFFICIENT_CREDITS",
         });
       }
 
       // Check credit expiry
-      if (mentor.creditExpiry && new Date() > new Date(mentor.creditExpiry)) {
-        mentor.credits = 0;
-        mentor.creditExpiry = null;
-        await mentor.save();
+      if (user.creditExpiry && new Date() > new Date(user.creditExpiry)) {
+        user.credits = 0;
+        user.creditExpiry = null;
+        await user.save();
         return res.status(403).json({
           success: false,
           error: "Your credits have expired. Please purchase more credits.",
@@ -187,31 +223,41 @@ router.post(
         });
       }
 
+      // Determine features based on role
+      const features = {
+        chat: true,
+        resources: true,
+        classes: req.user.role === "mentor", // Only mentors can have classes
+        announcements: req.user.role === "mentor", // Only mentors can have announcements
+      };
+
       // Create the community
       const community = await Community.create({
         name,
         description,
         category,
         tags: tags || [],
-        joinCost: joinCost || 0,
+        joinCost: 5, // Fixed join cost
         maxMembers,
         coverImage: coverImage || "",
         settings: settings || {},
         mentor: req.user._id,
+        creatorRole: req.user.role,
+        features,
       });
 
       // ✅ Deduct credits and add to history
-      mentor.credits -= COMMUNITY_CREATION_COST;
-      mentor.creditHistory.push({
+      user.credits -= COMMUNITY_CREATION_COST;
+      user.creditHistory.push({
         amount: -COMMUNITY_CREATION_COST,
         type: "usage",
         description: `Created community: ${name}`,
         relatedCommunity: community._id,
         createdAt: new Date(),
       });
-      await mentor.save();
+      await user.save();
 
-      // Update mentor statistics
+      // Update user statistics
       await User.findByIdAndUpdate(req.user._id, {
         $inc: { "statistics.communitiesOwned": 1 },
       });
@@ -219,8 +265,8 @@ router.post(
       res.status(201).json({
         success: true,
         community,
-        remainingCredits: mentor.credits,
-        message: `Community created successfully! ${COMMUNITY_CREATION_COST} credits deducted. Remaining: ${mentor.credits} credits`,
+        remainingCredits: user.credits,
+        message: `Community created successfully! ${COMMUNITY_CREATION_COST} credits deducted. Remaining: ${user.credits} credits`,
       });
     } catch (error) {
       console.error("Create community error:", error);
@@ -574,5 +620,57 @@ router.delete("/:id/leave", protect, authorize("student"), async (req, res) => {
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
+
+// Remove member (mentor only)
+router.delete(
+  "/:id/members/:studentId",
+  protect,
+  authorize("mentor"),
+  async (req, res) => {
+    try {
+      const community = await Community.findById(req.params.id);
+
+      if (!community) {
+        return res
+          .status(404)
+          .json({ success: false, error: "Community not found" });
+      }
+
+      if (community.mentor.toString() !== req.user._id.toString()) {
+        return res
+          .status(403)
+          .json({ success: false, error: "Not authorized" });
+      }
+
+      const membership = await Membership.findOne({
+        community: req.params.id,
+        student: req.params.studentId,
+        status: "approved",
+      });
+
+      if (!membership) {
+        return res
+          .status(404)
+          .json({ success: false, error: "Member not found" });
+      }
+
+      membership.status = "removed";
+      await membership.save();
+
+      await Community.findByIdAndUpdate(req.params.id, {
+        $inc: { "statistics.totalMembers": -1 },
+      });
+
+      await User.findByIdAndUpdate(req.params.studentId, {
+        $inc: { "statistics.communitiesJoined": -1 },
+      });
+
+      res.json({ success: true, message: "Member removed successfully" });
+    } catch (error) {
+      console.error("Remove member error:", error);
+      res.status(500).json({ success: false, error: "Server error" });
+    }
+  }
+);
 
 export default router;

@@ -7,17 +7,21 @@ import { api } from "./api";
 export const getCommunities = async (params = {}) => {
   const query = new URLSearchParams(params).toString();
   const path = query ? `/api/communities?${query}` : `/api/communities`;
-  return api(path, { auth: false });
+  // Auth optional but useful if we want to show "joined" status in list (not implemented yet)
+  const token = localStorage.getItem("token");
+  return api(path, { auth: !!token });
 };
 
 // Get single community
 export const getCommunity = async (id) => {
-  return api(`/api/communities/${id}`, { auth: false });
+  // Auth is optional but needed to check membership status
+  const token = localStorage.getItem("token");
+  return api(`/api/communities/${id}`, { auth: !!token });
 };
 
-// ========== MENTOR ==========
+// ========== MENTOR / CREATOR ==========
 
-// Create community (mentor only)
+// Create community
 export const createCommunity = async (data) => {
   return api("/api/communities", {
     method: "POST",

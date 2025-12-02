@@ -5,17 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  getMyCommunities, 
-  getPendingRequests, 
+import {
+  getMyCommunities,
+  getPendingRequests,
   processJoinRequest,
-  getCommunityMembers 
+  getCommunityMembers
 } from "@/lib/communityApi";
 // import useAuth from "@/hooks/useAuth";
-import { 
-  Users, 
-  Plus, 
-  TrendingUp, 
+import {
+  Users,
+  Plus,
+  TrendingUp,
   DollarSign,
   Clock,
   CheckCircle,
@@ -25,7 +25,7 @@ import {
 import { BASE_URL } from "@/lib/api";
 
 export default function MentorDashboard() {
-//   const { user } = useAuth();
+  //   const { user } = useAuth();
   const [communities, setCommunities] = useState([]);
   const [selectedCommunity, setSelectedCommunity] = useState(null);
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -89,7 +89,7 @@ export default function MentorDashboard() {
       }
 
       await processJoinRequest(selectedCommunity._id, requestId, action, rejectionReason);
-      
+
       // Refresh data
       setPendingRequests(prev => prev.filter(r => r._id !== requestId));
       loadCommunities(); // Refresh stats
@@ -215,11 +215,10 @@ export default function MentorDashboard() {
                     setSelectedCommunity(community);
                     setView("overview");
                   }}
-                  className={`w-full text-left p-3 rounded-lg transition-all ${
-                    selectedCommunity?._id === community._id
+                  className={`w-full text-left p-3 rounded-lg transition-all ${selectedCommunity?._id === community._id
                       ? "bg-purple-100 border-2 border-purple-300"
                       : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
-                  }`}
+                    }`}
                 >
                   <h4 className="font-semibold text-sm text-gray-900 truncate">
                     {community.name}
@@ -284,7 +283,7 @@ export default function MentorDashboard() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <p className="text-gray-600">{selectedCommunity.description}</p>
-                      
+
                       <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 bg-purple-50 rounded-lg">
                           <p className="text-sm text-purple-600">Members</p>
@@ -376,14 +375,13 @@ export default function MentorDashboard() {
                               className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
                             >
                               <div>
-                                <p className="font-semibold">{membership.student?.name}</p>
+                                <p className="font-semibold">{membership.student?.name || membership.name}</p>
                                 <p className="text-sm text-gray-600">
-                                  Joined {new Date(membership.joinedAt).toLocaleDateString()}
+                                  Joined {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : 'N/A'}
                                 </p>
-                                <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                                  <span>{membership.statistics?.postsCreated || 0} posts</span>
-                                  <span>{membership.statistics?.commentsCreated || 0} comments</span>
-                                </div>
+                                <Link to={`/profile/${membership.student?._id || membership._id}`} className="text-xs text-blue-600 hover:underline block mt-1">
+                                  View Profile
+                                </Link>
                               </div>
                             </div>
                           ))}

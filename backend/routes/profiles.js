@@ -23,11 +23,43 @@ router.get("/mentor/:id", optionalAuth, async (req, res) => {
       return res.status(403).json({ success: false, error: "Mentor not approved yet" });
     }
 
-    // Get mentor's communities
-    const communities = await Community.find({
+    // Get mentor's owned communities
+    const ownedCommunities = await Community.find({
       mentor: req.params.id,
       isActive: true,
     }).select("name description category coverImage joinCost statistics");
+
+    // Get communities where mentor is a member
+    const memberCommunities = await Membership.find({
+      student: req.params.id,
+      status: "approved",
+    })
+      .populate({
+        path: "community",
+        select: "name description category coverImage joinCost statistics",
+      })
+      .select("community");
+
+    const joinedCommunities = memberCommunities.map((m) => m.community);
+
+    // Mutual communities (if user is logged in)
+    let mutualCommunities = [];
+    if (req.user) {
+      // Get viewer's communities
+      const viewerMemberships = await Membership.find({
+        student: req.user.id,
+        status: "approved",
+      }).select("community");
+
+      const viewerCommunityIds = viewerMemberships.map((m) =>
+        m.community.toString()
+      );
+
+      // Find intersection with mentor's joined communities
+      mutualCommunities = joinedCommunities.filter((c) =>
+        viewerCommunityIds.includes(c._id.toString())
+      );
+    }
 
     // Public profile data
     const profile = {
@@ -47,7 +79,9 @@ router.get("/mentor/:id", optionalAuth, async (req, res) => {
         credentials: mentor.profile.credentials,
       },
       statistics: mentor.statistics,
-      communities,
+      communities: ownedCommunities, // Owned
+      joinedCommunities, // Member of
+      mutualCommunities, // Mutual
       joinedAt: mentor.createdAt,
     };
 
@@ -62,7 +96,7 @@ router.get("/mentor/:id", optionalAuth, async (req, res) => {
 router.get("/student/:id", optionalAuth, async (req, res) => {
   try {
     const student = await User.findById(req.params.id)
-      .select("name profile.avatar profile.bio profile.interests statistics createdAt");
+      .select("name role profile.avatar profile.bio profile.interests statistics createdAt");
 
     if (!student || student.role !== "student") {
       return res.status(404).json({ success: false, error: "Student not found" });

@@ -5,27 +5,34 @@ import PDFStorage from "./components/PDFStorage";
 import PricingPage from "./components/PricingPage.jsx";
 import Login from "./components/auth/Login.jsx";
 import Register from "./components/auth/Register.jsx";
-import PendingApproval from "./components/auth/PendingApproval.jsx";
-import ProtectedRoute from "./components/ProtectedRoute.jsx";
-import { AuthProvider } from "./hooks/useAuth";
-import MentorApproval from "@/pages/admin/MentorApproval.jsx";
-import AdminPaymentPanel from "@/components/AdminPaymentPanel.jsx";
-import Profile from "@/pages/Profile.jsx";
-import CreditDashboard from "@/components/CreditDashboard.jsx";
-import Downloads from "@/pages/Downloads.jsx";
-import Home from "@/pages/Home.jsx";
-import PostsFeed from "@/pages/PostsFeed.jsx";
-import CreatePost from "@/pages/CreatePost.jsx";
-import PostDetail from "@/pages/PostDetail.jsx";
-import UserPosts from "@/pages/UserPosts.jsx";
+import { AuthProvider } from "@/context/AuthContext";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
-// NEW: Community pages
-import Communities from "@/pages/Communities.jsx";
-import CommunityDetail from "@/pages/CommunityDetail.jsx";
-import MyCommunities from "@/pages/MyCommunities.jsx";
-import CreateCommunity from "@/pages/CreateCommunity.jsx";
-import MentorDashboard from "@/pages/MentorDashboard.jsx";
-import ApplyMentor from "@/pages/ApplyMentor.jsx";
+// Pages
+import Home from "@/pages/Home";
+import PublicProfile from "@/pages/PublicProfile";
+import Connections from "@/pages/Connections";
+import Profile from "@/pages/Profile";
+import CreditDashboard from "@/pages/CreditDashboard";
+import CreatePost from "@/pages/CreatePost";
+import UserPosts from "@/pages/UserPosts";
+import Downloads from "@/pages/Downloads";
+import PendingApproval from "@/pages/PendingApproval";
+import MentorApproval from "@/pages/admin/MentorApproval";
+import AdminPaymentPanel from "@/pages/admin/AdminPaymentPanel";
+import PostsFeed from "@/pages/PostsFeed";
+import PostDetail from "@/pages/PostDetail";
+
+// Community pages
+import Communities from "@/pages/Communities";
+import CommunityDetail from "@/pages/CommunityDetail";
+import MyCommunities from "@/pages/MyCommunities";
+import CreateCommunity from "@/pages/CreateCommunity";
+import MentorDashboard from "@/pages/MentorDashboard";
+import ApplyMentor from "@/pages/ApplyMentor";
+import Mentors from "@/pages/Mentors";
+import Chat from "@/pages/Chat";
+import Notifications from "@/pages/Notifications";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -46,8 +53,16 @@ function App() {
           <Route path="/pending-approval" element={<PendingApproval />} />
 
           {/* Communities - Public */}
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/communities" element={<Communities />} />
           <Route path="/communities/:id" element={<CommunityDetail />} />
+
+          {/* Public Profile */}
+          <Route path="/profile/:id" element={<PublicProfile />} />
+          <Route path="/connections" element={<Connections />} />
+
+          {/* Mentors - Public */}
+          <Route path="/mentors" element={<Mentors />} />
 
           {/* Solving hub - public listing and post detail */}
           <Route path="/posts" element={<PostsFeed />} />
@@ -57,13 +72,14 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<Profile />} />
             <Route path="/credits" element={<CreditDashboard />} />
+            <Route path="/chat" element={<Chat />} />
             <Route path="/posts/create" element={<CreatePost />} />
             <Route path="/my-posts" element={<UserPosts />} />
             <Route path="/downloads" element={<Downloads />} />
-            
+
             {/* Student: Apply to become mentor */}
             <Route path="/apply-mentor" element={<ApplyMentor />} />
-            
+
             {/* Student: My joined communities */}
             <Route path="/my-communities" element={<MyCommunities />} />
           </Route>

@@ -8,10 +8,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getMyMemberships, leaveCommunity } from "@/lib/communityApi";
 // import useAuth from "@/hooks/useAuth";
-import { 
-  Users, 
-  Calendar, 
-  LogOut, 
+import {
+  Users,
+  Calendar,
+  LogOut,
   Search,
   CheckCircle,
   Sparkles
@@ -19,7 +19,7 @@ import {
 import { BASE_URL } from "@/lib/api";
 
 export default function MyCommunities() {
-//   const { user } = useAuth();
+  //   const { user } = useAuth();
   const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [leavingId, setLeavingId] = useState(null);
@@ -46,7 +46,7 @@ export default function MyCommunities() {
     const confirmed = window.confirm(
       `Are you sure you want to leave "${communityName}"? You'll need to rejoin (and pay again if applicable) to access it.`
     );
-    
+
     if (!confirmed) return;
 
     setLeavingId(communityId);
@@ -82,7 +82,7 @@ export default function MyCommunities() {
               Communities you've joined
             </p>
           </div>
-          
+
           <Button asChild className="bg-purple-600 hover:bg-purple-700">
             <Link to="/communities">
               <Search className="w-4 h-4 mr-2" />
@@ -121,9 +121,9 @@ export default function MyCommunities() {
             {memberships.map((membership) => {
               const community = membership.community;
               const isLeaving = leavingId === community._id;
-              
+
               return (
-                <Card 
+                <Card
                   key={membership._id}
                   className="group border-purple-200 hover:shadow-xl hover:shadow-purple-200/50 transition-all duration-300 overflow-hidden bg-white"
                 >
@@ -145,7 +145,7 @@ export default function MyCommunities() {
                           <Users className="w-16 h-16 opacity-50" />
                         </div>
                       )}
-                      
+
                       {/* Member Badge */}
                       <Badge className="absolute top-3 right-3 bg-green-500 text-white">
                         <CheckCircle className="w-3 h-3 mr-1" />
@@ -182,24 +182,6 @@ export default function MyCommunities() {
                         Joined {new Date(membership.joinedAt).toLocaleDateString()}
                       </span>
                     </div>
-
-                    {/* Stats */}
-                    {membership.statistics && (
-                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-purple-100">
-                        <div className="text-center p-2 bg-purple-50 rounded">
-                          <p className="text-lg font-bold text-purple-900">
-                            {membership.statistics.postsCreated || 0}
-                          </p>
-                          <p className="text-xs text-purple-600">Posts</p>
-                        </div>
-                        <div className="text-center p-2 bg-blue-50 rounded">
-                          <p className="text-lg font-bold text-blue-900">
-                            {membership.statistics.commentsCreated || 0}
-                          </p>
-                          <p className="text-xs text-blue-600">Comments</p>
-                        </div>
-                      </div>
-                    )}
 
                     {/* Actions */}
                     <div className="flex gap-2 pt-2">

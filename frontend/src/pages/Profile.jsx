@@ -5,21 +5,23 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { api } from "@/lib/api";
 import useAuth from "@/hooks/useAuth";
-import { 
-  User, 
-  Mail, 
-  Edit2, 
-  Save, 
-  X, 
-  Lock, 
-  Shield, 
+import {
+  User,
+  Mail,
+  Edit2,
+  Save,
+  X,
+  Lock,
+  Shield,
   Briefcase,
   Award,
   Link2,
   DollarSign,
-  Check
+  Check,
+  Users
 } from "lucide-react";
 
 export default function Profile() {
@@ -30,7 +32,7 @@ export default function Profile() {
   const [pwdSaving, setPwdSaving] = useState(false);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
-  
+
   // Edit modes
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -52,6 +54,9 @@ export default function Profile() {
   // Password form
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
+  // Communities state
+  const [communities, setCommunities] = useState({ owned: [], joined: [] });
 
   useEffect(() => {
     let ignore = false;
@@ -83,6 +88,22 @@ export default function Profile() {
         setLinkedIn(p.linkedIn || "");
         setPortfolio(p.portfolio || "");
         setHourlyRate(p.hourlyRate ?? "");
+
+        // Fetch communities
+        if (u._id && u.role) {
+          try {
+            const profileRes = await api(`/api/profiles/${u.role}/${u._id}`);
+            if (profileRes.success) {
+              setCommunities({
+                owned: profileRes.profile.ownedCommunities || [],
+                joined: profileRes.profile.joinedCommunities || []
+              });
+            }
+          } catch (commErr) {
+            console.error("Failed to load communities", commErr);
+          }
+        }
+
       } catch (e) {
         setErr(e.message || "Failed to load profile");
       } finally {
@@ -127,7 +148,7 @@ export default function Profile() {
       await refreshUser();
       setOk("Profile updated successfully!");
       setIsEditing(false);
-      
+
       setTimeout(() => setOk(""), 3000);
     } catch (e) {
       setErr(e.message || "Failed to update profile");
@@ -151,7 +172,7 @@ export default function Profile() {
       setCurrentPassword("");
       setNewPassword("");
       setShowPasswordForm(false);
-      
+
       setTimeout(() => setOk(""), 3000);
     } catch (e) {
       setErr(e.message || "Failed to update password");
@@ -190,7 +211,7 @@ export default function Profile() {
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-500 via-teal-600 to-cyan-600 p-8 text-white">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
-        
+
         <div className="relative flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
@@ -212,8 +233,8 @@ export default function Profile() {
                       approvalStatus === "approved"
                         ? "bg-green-500/90 text-white"
                         : approvalStatus === "rejected"
-                        ? "bg-red-500/90 text-white"
-                        : "bg-yellow-500/90 text-white"
+                          ? "bg-red-500/90 text-white"
+                          : "bg-yellow-500/90 text-white"
                     }
                   >
                     {approvalStatus || "pending"}
@@ -222,7 +243,7 @@ export default function Profile() {
               </div>
             </div>
           </div>
-          
+
           {isAdmin && (
             <div className="flex gap-2">
               <Button asChild variant="secondary" size="sm">
@@ -259,7 +280,7 @@ export default function Profile() {
               Account Information
             </CardTitle>
             {!isEditing ? (
-              <Button 
+              <Button
                 onClick={() => setIsEditing(true)}
                 variant="outline"
                 size="sm"
@@ -270,7 +291,7 @@ export default function Profile() {
               </Button>
             ) : (
               <div className="flex gap-2">
-                <Button 
+                <Button
                   onClick={handleCancelEdit}
                   variant="outline"
                   size="sm"
@@ -279,7 +300,7 @@ export default function Profile() {
                   <X className="w-4 h-4" />
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={handleSave}
                   size="sm"
                   className="gap-2 bg-teal-600 hover:bg-teal-700"
@@ -304,7 +325,7 @@ export default function Profile() {
                 <Label className="text-gray-500 text-sm">Email Address</Label>
                 <p className="text-lg font-medium">{email || "—"}</p>
               </div>
-              
+
               {role === "mentor" && (
                 <>
                   <div className="space-y-1 md:col-span-2">
@@ -320,12 +341,12 @@ export default function Profile() {
                       )) : <p className="text-gray-400">No expertise added</p>}
                     </div>
                   </div>
-                  
+
                   <div className="space-y-1 md:col-span-2">
                     <Label className="text-gray-500 text-sm">Experience</Label>
                     <p className="text-lg">{experience || "—"}</p>
                   </div>
-                  
+
                   <div className="space-y-1 md:col-span-2">
                     <Label className="text-gray-500 text-sm flex items-center gap-2">
                       <Award className="w-4 h-4" />
@@ -333,7 +354,7 @@ export default function Profile() {
                     </Label>
                     <p className="text-lg">{credentials || "—"}</p>
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label className="text-gray-500 text-sm flex items-center gap-2">
                       <Link2 className="w-4 h-4" />
@@ -347,7 +368,7 @@ export default function Profile() {
                       <p className="text-gray-400">—</p>
                     )}
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label className="text-gray-500 text-sm flex items-center gap-2">
                       <Link2 className="w-4 h-4" />
@@ -361,7 +382,7 @@ export default function Profile() {
                       <p className="text-gray-400">—</p>
                     )}
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label className="text-gray-500 text-sm flex items-center gap-2">
                       <DollarSign className="w-4 h-4" />
@@ -388,10 +409,10 @@ export default function Profile() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
-                  <Input 
-                    id="email" 
-                    value={email} 
-                    disabled 
+                  <Input
+                    id="email"
+                    value={email}
+                    disabled
                     className="h-11 bg-gray-50"
                   />
                 </div>
@@ -403,7 +424,7 @@ export default function Profile() {
                     <Briefcase className="w-5 h-5 text-teal-600" />
                     Mentor Information
                   </h3>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="expertise">Areas of Expertise</Label>
                     <Input
@@ -415,7 +436,7 @@ export default function Profile() {
                     />
                     <p className="text-xs text-gray-500">Separate multiple skills with commas</p>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="experience">Experience</Label>
                     <Input
@@ -426,7 +447,7 @@ export default function Profile() {
                       className="h-11"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="credentials">Credentials & Certifications</Label>
                     <Input
@@ -437,7 +458,7 @@ export default function Profile() {
                       className="h-11"
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="linkedIn">LinkedIn Profile</Label>
@@ -460,7 +481,7 @@ export default function Profile() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="hourlyRate">Hourly Rate (USD)</Label>
                     <Input
@@ -489,7 +510,7 @@ export default function Profile() {
               Security
             </CardTitle>
             {!showPasswordForm && (
-              <Button 
+              <Button
                 onClick={() => setShowPasswordForm(true)}
                 variant="outline"
                 size="sm"
@@ -538,7 +559,7 @@ export default function Profile() {
                 <p className="text-xs text-gray-500">Must be at least 6 characters</p>
               </div>
               <div className="flex gap-2 pt-2">
-                <Button 
+                <Button
                   type="button"
                   onClick={() => {
                     setShowPasswordForm(false);
@@ -550,8 +571,8 @@ export default function Profile() {
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={pwdSaving}
                   className="bg-teal-600 hover:bg-teal-700"
                 >
@@ -560,6 +581,73 @@ export default function Profile() {
               </div>
             </form>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Communities Section */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="border-b bg-gray-50/50">
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-teal-600" />
+            My Communities
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-6">
+          {role === "mentor" && (
+            <div>
+              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-teal-600" />
+                Owned Communities
+              </h3>
+              {communities.owned?.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {communities.owned.map((c) => (
+                    <Link to={`/communities/${c._id}`} key={c._id}>
+                      <div className="flex items-center gap-3 p-3 rounded-lg border hover:border-teal-300 hover:bg-teal-50 transition-colors">
+                        <Avatar className="h-10 w-10 rounded-lg">
+                          <AvatarImage src={c.coverImage} />
+                          <AvatarFallback>{c.name[0]}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium line-clamp-1">{c.name}</p>
+                          <p className="text-xs text-gray-500">{c.statistics?.totalMembers || 0} members</p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">You haven't created any communities yet.</p>
+              )}
+            </div>
+          )}
+
+          <div>
+            <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+              <Users className="w-4 h-4 text-teal-600" />
+              Joined Communities
+            </h3>
+            {communities.joined?.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {communities.joined.map((c) => (
+                  <Link to={`/communities/${c._id}`} key={c._id}>
+                    <div className="flex items-center gap-3 p-3 rounded-lg border hover:border-teal-300 hover:bg-teal-50 transition-colors">
+                      <Avatar className="h-10 w-10 rounded-lg">
+                        <AvatarImage src={c.coverImage} />
+                        <AvatarFallback>{c.name[0]}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium line-clamp-1">{c.name}</p>
+                        <p className="text-xs text-gray-500">{c.statistics?.totalMembers || 0} members</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">You haven't joined any communities yet.</p>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

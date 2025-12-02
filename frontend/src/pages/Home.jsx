@@ -1,13 +1,12 @@
 // src/pages/Home.jsx
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
 import useAuth from "@/hooks/useAuth";
 import { Search, BookOpen, Users, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
-import { api, BASE_URL } from "@/lib/api";
+import { api } from "@/lib/api";
 
 export default function Home() {
   const { user } = useAuth();
@@ -18,11 +17,8 @@ export default function Home() {
   useEffect(() => {
     const fetchMentors = async () => {
       try {
-        const res = await api("/api/auth/users?role=mentor&limit=4");
-        const approvedMentors = (res.users || []).filter(
-          (m) => m.approvalStatus === "approved"
-        );
-        setMentors(approvedMentors);
+        const res = await api("/api/profiles/mentors?limit=4");
+        setMentors(res.mentors || []);
       } catch (error) {
         console.error("Failed to fetch mentors:", error);
       } finally {
@@ -55,7 +51,7 @@ export default function Home() {
 
             {/* Right: Action Cards */}
             <div className="order-1 lg:order-2 space-y-6">
-              <Link to="/posts">
+              <Link to="/mentors">
                 <Card className="group border-2 border-emerald-200 hover:border-emerald-400 hover:shadow-xl transition-all duration-300 cursor-pointer bg-white/80 backdrop-blur">
                   <CardContent className="p-8 text-center space-y-2">
                     <Users className="w-12 h-12 text-emerald-600 mx-auto" />
@@ -83,7 +79,7 @@ export default function Home() {
                 </Card>
               </Link>
 
-              <Link to="/posts">
+              <Link to="/communities">
                 <Card className="group border-2 border-cyan-200 hover:border-cyan-400 hover:shadow-xl transition-all duration-300 cursor-pointer bg-white/80 backdrop-blur">
                   <CardContent className="p-8 text-center space-y-2">
                     <Search className="w-12 h-12 text-cyan-600 mx-auto" />
@@ -113,7 +109,7 @@ export default function Home() {
               variant="ghost"
               className="text-emerald-700 hover:text-emerald-900"
             >
-              <Link to="/posts">
+              <Link to="/mentors">
                 see all
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Link>

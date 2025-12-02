@@ -29,6 +29,7 @@ import {
   Award,
   Sparkles,
 } from "lucide-react";
+import NotificationBell from "./NotificationBell";
 
 const navItems = [
   { label: "Home", href: "/" },
@@ -89,121 +90,128 @@ export default function Navbar() {
           )}
 
           {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <User className="h-4 w-4" />
-                  {user.name}
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-muted-foreground capitalize">
-                        Role: {user.role}
-                      </p>
-                      {user.role === "mentor" && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                          user.approvalStatus === "approved" 
-                            ? "bg-green-100 text-green-700" 
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}>
-                          {user.approvalStatus}
-                        </span>
-                      )}
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/chat")} title="Messages">
+                <MessageSquare className="h-5 w-5 text-gray-600" />
+              </Button>
+
+              <NotificationBell />
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <User className="h-4 w-4" />
+                    {user.name}
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground capitalize">
+                          Role: {user.role}
+                        </p>
+                        {user.role === "mentor" && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${user.approvalStatus === "approved"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-yellow-100 text-yellow-700"
+                            }`}>
+                            {user.approvalStatus}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
 
-                {/* ✅ Profile */}
-                <DropdownMenuItem asChild>
-                  <Link to="/profile" className="cursor-pointer">
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
+                  {/* ✅ Profile */}
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="cursor-pointer">
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
 
-                {/* ✅ Credits */}
-                <DropdownMenuItem asChild>
-                  <Link to="/credits" className="cursor-pointer">
-                    <Coins className="mr-2 h-4 w-4" />
-                    Credits ({user.credits || 0})
-                  </Link>
-                </DropdownMenuItem>
+                  {/* ✅ Credits */}
+                  <DropdownMenuItem asChild>
+                    <Link to="/credits" className="cursor-pointer">
+                      <Coins className="mr-2 h-4 w-4" />
+                      Credits ({user.credits || 0})
+                    </Link>
+                  </DropdownMenuItem>
 
-                <DropdownMenuSeparator />
+                  <DropdownMenuSeparator />
 
-                {/* ✅ STUDENT SPECIFIC */}
-                {user.role === "student" && (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to="/my-communities" className="cursor-pointer">
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        My Communities
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/apply-mentor" className="cursor-pointer">
-                        <Award className="mr-2 h-4 w-4 text-amber-600" />
-                        <span className="text-amber-600 font-medium">Become a Mentor</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                )}
+                  {/* ✅ STUDENT SPECIFIC */}
+                  {user.role === "student" && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/my-communities" className="cursor-pointer">
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          My Communities
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/apply-mentor" className="cursor-pointer">
+                          <Award className="mr-2 h-4 w-4 text-amber-600" />
+                          <span className="text-amber-600 font-medium">Become a Mentor</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
 
-                {/* ✅ MENTOR SPECIFIC */}
-                {isApprovedMentor && (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to="/mentor/dashboard" className="cursor-pointer">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Mentor Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                )}
+                  {/* ✅ MENTOR SPECIFIC */}
+                  {isApprovedMentor && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/mentor/dashboard" className="cursor-pointer">
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          Mentor Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
 
-                <DropdownMenuSeparator />
+                  <DropdownMenuSeparator />
 
-                {/* Posts & Downloads */}
-                <DropdownMenuItem asChild>
-                  <Link to="/my-posts" className="cursor-pointer">
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    My Posts
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/downloads" className="cursor-pointer">
-                    <Download className="mr-2 h-4 w-4" />
-                    Downloads
-                  </Link>
-                </DropdownMenuItem>
+                  {/* Posts & Downloads */}
+                  <DropdownMenuItem asChild>
+                    <Link to="/my-posts" className="cursor-pointer">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      My Posts
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/downloads" className="cursor-pointer">
+                      <Download className="mr-2 h-4 w-4" />
+                      Downloads
+                    </Link>
+                  </DropdownMenuItem>
 
-                {/* ✅ ADMIN */}
-                {isAdmin && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin/mentors" className="cursor-pointer">
-                        <Users className="mr-2 h-4 w-4" />
-                        Admin Panel
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                )}
+                  {/* ✅ ADMIN */}
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin/mentors" className="cursor-pointer">
+                          <Users className="mr-2 h-4 w-4" />
+                          Admin Panel
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
 
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ) : (
             <>
               <Button asChild variant="ghost" size="sm">
@@ -218,6 +226,8 @@ export default function Navbar() {
 
         {/* Mobile Menu */}
         <div className="md:hidden flex items-center gap-2">
+          {user && <NotificationBell />}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm">

@@ -1,6 +1,19 @@
 // models/Community.js
 import mongoose from "mongoose";
 
+const announcementSchema = new mongoose.Schema({
+  content: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+});
+
+const scheduleSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  date: { type: Date, required: true },
+  link: { type: String },
+  description: { type: String },
+});
+
 const communitySchema = new mongoose.Schema(
   {
     name: {
@@ -22,6 +35,12 @@ const communitySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    creatorRole: {
+      type: String,
+      enum: ["student", "mentor"],
+      required: true,
+      default: "mentor",
+    },
     coverImage: {
       type: String,
       default: "",
@@ -42,7 +61,7 @@ const communitySchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: [0, "Join cost cannot be negative"],
-      default: 0,
+      default: 5, // Default join cost
     },
     maxMembers: {
       type: Number,
@@ -54,6 +73,14 @@ const communitySchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    features: {
+      chat: { type: Boolean, default: true },
+      resources: { type: Boolean, default: true },
+      classes: { type: Boolean, default: false }, // Mentor only
+      announcements: { type: Boolean, default: false }, // Mentor only
+    },
+    announcements: [announcementSchema],
+    schedule: [scheduleSchema],
     settings: {
       autoApprove: {
         type: Boolean,
@@ -110,7 +137,7 @@ communitySchema.pre("save", async function (next) {
     });
     
     if (mentorCommunities >= 10) {
-      throw new Error("Maximum 10 active communities per mentor");
+      throw new Error("Maximum 10 active communities per user");
     }
   }
   next();

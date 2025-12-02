@@ -105,6 +105,16 @@ const userSchema = new mongoose.Schema(
     downloadedPDFs: { type: [downloadedPdfSchema], default: [] },
     savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
 
+    // Connections System
+    connections: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    connectionRequests: [
+      {
+        from: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        status: { type: String, enum: ["pending", "accepted", "rejected"], default: "pending" },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+
     isEmailVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
     lastLogin: { type: Date },

@@ -1,10 +1,15 @@
-// server.js (Updated with new routes)
 import express from "express";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import cors from "cors";
-import pdfRoutes from "./routes/pdfs.js";
+import dotenv from "dotenv";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Route imports
 import authRoutes from "./routes/auth.js";
+import pdfRoutes from "./routes/pdfs.js";
 import paymentRoutes from "./routes/payments.js";
 import creditRoutes from "./routes/credits.js";
 import postRoutes from "./routes/posts.js";
@@ -12,14 +17,40 @@ import commentRoutes from "./routes/comments.js";
 import uploadRoutes from "./routes/upload.js";
 import communityRoutes from "./routes/communities.js";
 import profileRoutes from "./routes/profiles.js";
-import path from "path";
-import fs from "fs";
+import resourceRoutes from "./routes/resources.js";
+import connectionRoutes from "./routes/connections.js";
+import examRoutes from "./routes/exams.js";
+import messageRoutes from "./routes/messages.js";
+import communityMessageRoutes from "./routes/communityMessages.js";
+import announcementRoutes from "./routes/announcements.js";
+import scheduleRoutes from "./routes/schedules.js";
+import notificationRoutes from "./routes/notifications.js";
+import taskRoutes from "./routes/tasks.js";
+import leaderboardRoutes from "./routes/leaderboard.js";
+
+// Model imports for Socket.IO
+import DirectMessage from "./models/DirectMessage.js";
+import Conversation from "./models/Conversation.js";
+import CommunityMessage from "./models/CommunityMessage.js";
+import User from "./models/User.js";
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  },
+});
+
 const PORT = process.env.PORT || 5000;
-const uploadRoot = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadRoot)) fs.mkdirSync(uploadRoot, { recursive: true });
+const uploadRoot = path.join(__dirname, "uploads");
 
 // Middleware
 app.use(
@@ -36,6 +67,128 @@ app.use("/uploads", express.static(uploadRoot));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Make io accessible to routes
+app.set('io', io);
+
+// Socket.io Logic
+io.on("connection", (socket) => {
+  console.log("New client connected:", socket.id);
+
+  // User online/offline tracking
+  socket.on("user_online", (userId) => {
+    socket.userId = userId;
+    socket.join(`user_${userId}`);
+    console.log(`User ${userId} is online`);
+  });
+
+  socket.on("user_offline", (userId) => {
+    socket.leave(`user_${userId}`);
+    console.log(`User ${userId} is offline`);
+  });
+
+  // Community chat
+  socket.on("join_community", (communityId) => {
+    socket.join(communityId);
+    console.log(`User ${socket.id} joined community: ${communityId}`);
+  });
+
+  socket.on("leave_community", (communityId) => {
+    socket.leave(communityId);
+    console.log(`User ${socket.id} left community: ${communityId}`);
+  });
+
+  socket.on("send_message", async (data) => {
+    // data: { communityId, sender: { name, avatar, id }, content, timestamp }
+    try {
+      // Save to database
+      const message = await CommunityMessage.create({
+        community: data.communityId,
+        sender: data.sender.id,
+        content: data.content,
+        timestamp: data.timestamp
+      });
+      console.log("Community message saved:", message._id);
+    } catch (error) {
+      console.error("Error saving community message:", error);
+    }
+
+    // Emit to all community members
+    io.to(data.communityId).emit("receive_message", data);
+  });
+
+  // Direct messaging
+  socket.on("send_direct_message", async (data) => {
+    // data: { to, from, sender: { name, avatar, id }, content, timestamp, conversationId }
+    try {
+      // Verify users are connected
+      const sender = await User.findById(data.from);
+      const isConnected = sender.connections.includes(data.to);
+
+      if (!isConnected) {
+        socket.emit("message_error", { error: "Users are not connected" });
+        return;
+      }
+
+      // Get or create conversation
+      let conversation;
+      if (data.conversationId) {
+        conversation = await Conversation.findById(data.conversationId);
+      } else {
+        conversation = await Conversation.findOne({
+          participants: { $all: [data.from, data.to] }
+        });
+
+        if (!conversation) {
+          conversation = await Conversation.create({
+            participants: [data.from, data.to]
+          });
+        }
+      }
+
+      // Save message to database
+      const message = await DirectMessage.create({
+        conversation: conversation._id,
+        sender: data.from,
+        recipient: data.to,
+        content: data.content,
+        timestamp: data.timestamp
+      });
+
+      // Update conversation's last message
+      conversation.lastMessage = {
+        content: data.content,
+        timestamp: data.timestamp,
+        sender: data.from
+      };
+      await conversation.save();
+
+      console.log(`Direct message saved: ${message._id}`);
+
+      // Emit to recipient
+      io.to(`user_${data.to}`).emit("receive_direct_message", {
+        ...data,
+        conversationId: conversation._id,
+        messageId: message._id
+      });
+    } catch (error) {
+      console.error("Error saving direct message:", error);
+      socket.emit("message_error", { error: "Failed to send message" });
+    }
+  });
+
+  // Connection removed event
+  socket.on("connection_removed", (data) => {
+    // data: { userId, removedUserId }
+    io.to(`user_${data.removedUserId}`).emit("connection_removed", {
+      userId: data.userId
+    });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
+});
+
 // Mount routes
 app.use("/api/auth", authRoutes);
 app.use("/api/pdfs", pdfRoutes);
@@ -46,6 +199,16 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/communities", communityRoutes);
 app.use("/api/profiles", profileRoutes);
+app.use("/api/resources", resourceRoutes);
+app.use("/api/connections", connectionRoutes);
+app.use("/api/exams", examRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/community-messages", communityMessageRoutes);
+app.use("/api/announcements", announcementRoutes);
+app.use("/api/schedules", scheduleRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
 
 // Root route for health check
 app.get("/", (req, res) => {
@@ -60,6 +223,14 @@ app.get("/", (req, res) => {
       comments: "/api/comments",
       communities: "/api/communities",
       profiles: "/api/profiles",
+      resources: "/api/resources",
+      messages: "/api/messages",
+      communityMessages: "/api/community-messages",
+      announcements: "/api/announcements",
+      schedules: "/api/schedules",
+      notifications: "/api/notifications",
+      tasks: "/api/tasks",
+      leaderboard: "/api/leaderboard"
     },
   });
 });
@@ -95,7 +266,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📚 API Documentation:`);
   console.log(`   - Auth: http://localhost:${PORT}/api/auth`);
@@ -106,4 +277,12 @@ app.listen(PORT, () => {
   console.log(`   - Comments: http://localhost:${PORT}/api/comments`);
   console.log(`   - Communities: http://localhost:${PORT}/api/communities`);
   console.log(`   - Profiles: http://localhost:${PORT}/api/profiles`);
+  console.log(`   - Resources: http://localhost:${PORT}/api/resources`);
+  console.log(`   - Messages: http://localhost:${PORT}/api/messages`);
+  console.log(`   - Community Messages: http://localhost:${PORT}/api/community-messages`);
+  console.log(`   - Announcements: http://localhost:${PORT}/api/announcements`);
+  console.log(`   - Schedules: http://localhost:${PORT}/api/schedules`);
+  console.log(`   - Notifications: http://localhost:${PORT}/api/notifications`);
+  console.log(`   - Tasks: http://localhost:${PORT}/api/tasks`);
+  console.log(`   - Leaderboard: http://localhost:${PORT}/api/leaderboard`);
 });
