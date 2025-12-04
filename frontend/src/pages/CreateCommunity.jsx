@@ -31,7 +31,7 @@ export default function CreateCommunity() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const CREATION_COST = 10;
+  const CREATION_COST = user?.role === "student" ? 5 : 10;
 
   const handleChange = (e) => {
     const { name, value } = e.target;

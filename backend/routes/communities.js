@@ -22,17 +22,40 @@ router.get("/", async (req, res) => {
       sort = "-createdAt",
       page = 1,
       limit = 12,
+      creatorRole,
     } = req.query;
 
     const query = { isActive: true };
 
     if (category) query.category = category;
+
+    // Handle creatorRole filtering
+    if (creatorRole) {
+      // Handle old communities without creatorRole (treat as mentor communities)
+      if (creatorRole === "mentor") {
+        query.$and = query.$and || [];
+        query.$and.push({
+          $or: [
+            { creatorRole: "mentor" },
+            { creatorRole: { $exists: false } },
+            { creatorRole: null }
+          ]
+        });
+      } else {
+        query.creatorRole = creatorRole;
+      }
+    }
+
+    // Handle search
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { tags: { $in: [new RegExp(search, "i")] } },
-      ];
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { description: { $regex: search, $options: "i" } },
+          { tags: { $in: [new RegExp(search, "i")] } },
+        ]
+      });
     }
 
     const communities = await Community.find(query)
@@ -193,7 +216,7 @@ router.post(
       }
 
       // ✅ Check and deduct credits
-      const COMMUNITY_CREATION_COST = 10; // Fixed cost
+      const COMMUNITY_CREATION_COST = req.user.role === "student" ? 5 : 10; // 5 for students, 10 for mentors
       const user = await User.findById(req.user._id);
 
       if (!user) {

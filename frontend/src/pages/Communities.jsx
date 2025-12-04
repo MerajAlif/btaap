@@ -17,10 +17,11 @@ export default function Communities() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
+  const [activeTab, setActiveTab] = useState("all"); // all, mentor, student
 
   useEffect(() => {
     loadCommunities();
-  }, [search, category]);
+  }, [search, category, activeTab]);
 
   const loadCommunities = async () => {
     setLoading(true);
@@ -28,7 +29,8 @@ export default function Communities() {
       const params = {};
       if (search) params.search = search;
       if (category) params.category = category;
-      
+      if (activeTab !== "all") params.creatorRole = activeTab;
+
       const data = await getCommunities(params);
       setCommunities(data.communities || []);
     } catch (error) {
@@ -49,15 +51,44 @@ export default function Communities() {
               Btaap Communities
             </h1>
             <p className="text-purple-700 mt-2">
-              Join mentor-led communities and accelerate your learning
+              Join mentor-led communities and student peer groups
             </p>
           </div>
-          
-          {user?.role === "mentor" && user?.approvalStatus === "approved" && (
-            <Button asChild className="bg-purple-600 hover:bg-purple-700">
-              <Link to="/communities/create">Create Community</Link>
-            </Button>
-          )}
+
+          <Button asChild className="bg-purple-600 hover:bg-purple-700">
+            <Link to="/communities/create">Create Community</Link>
+          </Button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-4 border-b border-purple-200 bg-white/80 backdrop-blur p-4 rounded-t-lg">
+          <button
+            onClick={() => setActiveTab("all")}
+            className={`pb-2 px-4 font-medium transition-colors ${activeTab === "all"
+                ? "text-purple-600 border-b-2 border-purple-600"
+                : "text-gray-500 hover:text-purple-600"
+              }`}
+          >
+            All Communities
+          </button>
+          <button
+            onClick={() => setActiveTab("mentor")}
+            className={`pb-2 px-4 font-medium transition-colors ${activeTab === "mentor"
+                ? "text-purple-600 border-b-2 border-purple-600"
+                : "text-gray-500 hover:text-purple-600"
+              }`}
+          >
+            Mentor Communities
+          </button>
+          <button
+            onClick={() => setActiveTab("student")}
+            className={`pb-2 px-4 font-medium transition-colors ${activeTab === "student"
+                ? "text-purple-600 border-b-2 border-purple-600"
+                : "text-gray-500 hover:text-purple-600"
+              }`}
+          >
+            Student Communities
+          </button>
         </div>
 
         {/* Search & Filter */}
@@ -72,7 +103,7 @@ export default function Communities() {
                 className="pl-10 border-purple-200 focus:border-purple-500 h-12"
               />
             </div>
-            
+
             <div className="flex gap-2 flex-wrap">
               <Button
                 variant={!category ? "default" : "outline"}
@@ -141,7 +172,7 @@ export default function Communities() {
                         <Users className="w-20 h-20 opacity-50" />
                       </div>
                     )}
-                    
+
                     {/* Category Badge */}
                     <Badge className="absolute top-3 left-3 bg-white/90 text-purple-700">
                       {community.category}
@@ -159,7 +190,7 @@ export default function Communities() {
                       {community.description}
                     </p>
 
-                    {/* Mentor Info */}
+                    {/* Creator Info */}
                     <div className="flex items-center gap-2 pt-2 border-t border-purple-100">
                       <Avatar className="w-8 h-8">
                         <AvatarImage src={community.mentor?.profile?.avatar} />
@@ -171,7 +202,9 @@ export default function Communities() {
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {community.mentor?.name}
                         </p>
-                        <p className="text-xs text-gray-500">Mentor</p>
+                        <p className="text-xs text-gray-500">
+                          {community.creatorRole === "student" ? "Student" : "Mentor"}
+                        </p>
                       </div>
                     </div>
 
@@ -183,7 +216,7 @@ export default function Communities() {
                           {community.statistics?.totalMembers || 0}
                         </span>
                       </div>
-                      
+
                       {community.joinCost > 0 ? (
                         <div className="flex items-center gap-1 text-green-600 font-semibold">
                           <DollarSign className="w-4 h-4" />

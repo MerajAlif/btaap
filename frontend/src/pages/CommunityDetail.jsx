@@ -326,15 +326,15 @@ export default function CommunityDetail() {
 
         {canAccess ? (
           <Tabs defaultValue="announcements" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8 lg:w-auto">
-              <TabsTrigger value="announcements">Announcements</TabsTrigger>
-              <TabsTrigger value="schedule">Schedule</TabsTrigger>
-              <TabsTrigger value="resources">Resources</TabsTrigger>
-              <TabsTrigger value="chat">Chat</TabsTrigger>
+            <TabsList className="flex flex-wrap gap-2">
+              {community.features?.announcements && <TabsTrigger value="announcements">Announcements</TabsTrigger>}
+              {community.features?.classes && <TabsTrigger value="schedule">Schedule</TabsTrigger>}
+              {community.features?.resources && <TabsTrigger value="resources">Resources</TabsTrigger>}
+              {community.features?.chat && <TabsTrigger value="chat">Chat</TabsTrigger>}
               <TabsTrigger value="members">Members</TabsTrigger>
-              <TabsTrigger value="tasks">Tasks</TabsTrigger>
-              <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-              <TabsTrigger value="liveclass">Live Class</TabsTrigger>
+              {community.features?.classes && <TabsTrigger value="tasks">Tasks</TabsTrigger>}
+              {community.features?.classes && <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>}
+              {community.features?.classes && <TabsTrigger value="liveclass">Live Class</TabsTrigger>}
             </TabsList>
 
             {/* ANNOUNCEMENTS TAB */}
