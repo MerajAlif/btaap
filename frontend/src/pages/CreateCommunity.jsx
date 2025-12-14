@@ -31,7 +31,7 @@ export default function CreateCommunity() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const CREATION_COST = user?.role === "student" ? 5 : 10;
+  const CREATION_COST = user?.role === "student" ? 0 : 10;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -44,19 +44,21 @@ export default function CreateCommunity() {
     setError("");
     setSuccess("");
 
-    if (user.credits < CREATION_COST) {
+    if (CREATION_COST > 0 && user.credits < CREATION_COST) {
       setError(`You need ${CREATION_COST} credits to create a community. You have ${user.credits} credits.`);
       setSaving(false);
       return;
     }
 
-    const confirmed = window.confirm(
-      `Creating a community will cost ${CREATION_COST} credits. You currently have ${user.credits} credits. Continue?`
-    );
+    if (CREATION_COST > 0) {
+      const confirmed = window.confirm(
+        `Creating a community will cost ${CREATION_COST} credits. You currently have ${user.credits} credits. Continue?`
+      );
 
-    if (!confirmed) {
-      setSaving(false);
-      return;
+      if (!confirmed) {
+        setSaving(false);
+        return;
+      }
     }
 
     try {
@@ -104,7 +106,7 @@ export default function CreateCommunity() {
             </p>
             <div className="mt-2 flex items-center gap-2">
               <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                Cost: {CREATION_COST} credits
+                Cost: {CREATION_COST === 0 ? "Free" : `${CREATION_COST} credits`}
               </Badge>
               <span className="text-sm text-gray-600">
                 Your balance: <strong className={user?.credits >= CREATION_COST ? "text-green-600" : "text-red-600"}>
@@ -266,11 +268,11 @@ export default function CreateCommunity() {
                 <Label>Join Cost</Label>
                 <Input
                   disabled
-                  value="5 Credits"
+                  value={user?.role === "student" ? "Free" : "5 Credits"}
                   className="bg-gray-50"
                 />
                 <p className="text-xs text-gray-500">
-                  Fixed join cost for all communities
+                  {user?.role === "student" ? "Standard cost for other roles is 5 credits" : "Fixed join cost for all communities"}
                 </p>
               </div>
 
@@ -331,7 +333,7 @@ export default function CreateCommunity() {
               disabled={saving || user?.credits < CREATION_COST}
               className="flex-1 bg-purple-600 hover:bg-purple-700"
             >
-              {saving ? "Creating..." : `Create Community (${CREATION_COST} credits)`}
+              {saving ? "Creating..." : `Create Community (${CREATION_COST === 0 ? "Free" : `${CREATION_COST} credits`})`}
             </Button>
           </div>
         </form>

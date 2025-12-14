@@ -216,7 +216,7 @@ router.post(
       }
 
       // ✅ Check and deduct credits
-      const COMMUNITY_CREATION_COST = req.user.role === "student" ? 5 : 10; // 5 for students, 10 for mentors
+      const COMMUNITY_CREATION_COST = req.user.role === "student" ? 0 : 10; // 0 for students, 10 for mentors
       const user = await User.findById(req.user._id);
 
       if (!user) {
@@ -260,7 +260,7 @@ router.post(
         description,
         category,
         tags: tags || [],
-        joinCost: 5, // Fixed join cost
+        joinCost: req.user.role === "student" ? 0 : 5, // Free for student communities
         maxMembers,
         coverImage: coverImage || "",
         settings: settings || {},
@@ -278,7 +278,18 @@ router.post(
         relatedCommunity: community._id,
         createdAt: new Date(),
       });
-      await user.save();
+      // ✅ Deduct credits and add to history
+      if (COMMUNITY_CREATION_COST > 0) {
+        user.credits -= COMMUNITY_CREATION_COST;
+        user.creditHistory.push({
+          amount: -COMMUNITY_CREATION_COST,
+          type: "usage",
+          description: `Created community: ${name}`,
+          relatedCommunity: community._id,
+          createdAt: new Date(),
+        });
+        await user.save();
+      }
 
       // Update user statistics
       await User.findByIdAndUpdate(req.user._id, {
@@ -562,11 +573,14 @@ router.post("/:id/join", protect, authorize("student"), async (req, res) => {
         .json({ success: false, error: "Community is full" });
     }
 
-    const remainingCredits = await deductCredits(
-      req.user,
-      community.joinCost,
-      `Join community: ${community.name}`
-    );
+    let remainingCredits = req.user.credits;
+    if (community.joinCost > 0) {
+      remainingCredits = await deductCredits(
+        req.user,
+        community.joinCost,
+        `Join community: ${community.name}`
+      );
+    }
 
     const membership = await Membership.create({
       student: req.user._id,

@@ -23,7 +23,7 @@ export async function api(path, { auth = true, ...options } = {}) {
   const config = {
     ...options,
     headers,
-    credentials: 'include', // keep if your server CORS allows credentials; otherwise remove
+    credentials: 'include',
   };
 
   const response = await fetch(`${BASE_URL}${path}`, config);
