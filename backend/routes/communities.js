@@ -106,7 +106,7 @@ router.get(
 router.get(
   "/student/my-communities",
   protect,
-  authorize("student"),
+  authorize("student", "mentor"),
   async (req, res) => {
     try {
       const memberships = await Membership.find({
@@ -270,15 +270,6 @@ router.post(
       });
 
       // ✅ Deduct credits and add to history
-      user.credits -= COMMUNITY_CREATION_COST;
-      user.creditHistory.push({
-        amount: -COMMUNITY_CREATION_COST,
-        type: "usage",
-        description: `Created community: ${name}`,
-        relatedCommunity: community._id,
-        createdAt: new Date(),
-      });
-      // ✅ Deduct credits and add to history
       if (COMMUNITY_CREATION_COST > 0) {
         user.credits -= COMMUNITY_CREATION_COST;
         user.creditHistory.push({
@@ -291,10 +282,31 @@ router.post(
         await user.save();
       }
 
-      // Update user statistics
-      await User.findByIdAndUpdate(req.user._id, {
-        $inc: { "statistics.communitiesOwned": 1 },
-      });
+      // Auto-join the creator as a member
+      if (req.user.role === "student") {
+        await Membership.create({
+          student: req.user._id,
+          community: community._id,
+          status: "approved",
+          creditsPaid: 0,
+          joinedAt: new Date(),
+          approvedBy: req.user._id,
+          approvedAt: new Date()
+        });
+
+        // Update user statistics
+        await User.findByIdAndUpdate(req.user._id, {
+          $inc: {
+            "statistics.communitiesOwned": 1,
+            "statistics.communitiesJoined": 1
+          },
+        });
+      } else {
+        // Update user statistics for mentor
+        await User.findByIdAndUpdate(req.user._id, {
+          $inc: { "statistics.communitiesOwned": 1 },
+        });
+      }
 
       res.status(201).json({
         success: true,
@@ -313,8 +325,6 @@ router.post(
 router.put(
   "/:id",
   protect,
-  authorize("mentor"),
-  requireMentorApproval,
   async (req, res) => {
     try {
       const community = await Community.findById(req.params.id);
@@ -422,7 +432,7 @@ router.put(
           .json({ success: false, error: "Community not found" });
       }
 
-      if (community.mentor.toString() !== req.user._id.toString()) {
+      if (community.mentor.toString() !== req.user._id.toString() && !community.moderators?.includes(req.user._id)) {
         return res
           .status(403)
           .json({ success: false, error: "Not authorized" });
@@ -513,7 +523,7 @@ router.get("/:id/members", protect, authorize("mentor"), async (req, res) => {
         .json({ success: false, error: "Community not found" });
     }
 
-    if (community.mentor.toString() !== req.user._id.toString()) {
+    if (community.mentor.toString() !== req.user._id.toString() && !community.moderators?.includes(req.user._id)) {
       return res.status(403).json({ success: false, error: "Not authorized" });
     }
 
@@ -673,7 +683,7 @@ router.delete(
           .json({ success: false, error: "Community not found" });
       }
 
-      if (community.mentor.toString() !== req.user._id.toString()) {
+      if (community.mentor.toString() !== req.user._id.toString() && !community.moderators?.includes(req.user._id)) {
         return res
           .status(403)
           .json({ success: false, error: "Not authorized" });
@@ -705,6 +715,67 @@ router.delete(
       res.json({ success: true, message: "Member removed successfully" });
     } catch (error) {
       console.error("Remove member error:", error);
+      res.status(500).json({ success: false, error: "Server error" });
+    }
+  }
+);
+
+// Add moderator (Creator only)
+router.post(
+  "/:id/moderators",
+  protect,
+  async (req, res) => {
+    try {
+      const { studentId } = req.body;
+      const community = await Community.findById(req.params.id);
+
+      if (!community) {
+        return res.status(404).json({ success: false, error: "Community not found" });
+      }
+
+      if (community.mentor.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, error: "Not authorized" });
+      }
+
+      if (community.moderators.includes(studentId)) {
+        return res.status(400).json({ success: false, error: "User is already a moderator" });
+      }
+
+      community.moderators.push(studentId);
+      await community.save();
+
+      res.json({ success: true, message: "Moderator added successfully", moderators: community.moderators });
+    } catch (error) {
+      console.error("Add moderator error:", error);
+      res.status(500).json({ success: false, error: "Server error" });
+    }
+  }
+);
+
+// Remove moderator (Creator only)
+router.delete(
+  "/:id/moderators/:studentId",
+  protect,
+  async (req, res) => {
+    try {
+      const community = await Community.findById(req.params.id);
+
+      if (!community) {
+        return res.status(404).json({ success: false, error: "Community not found" });
+      }
+
+      if (community.mentor.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, error: "Not authorized" });
+      }
+
+      community.moderators = community.moderators.filter(
+        (modId) => modId.toString() !== req.params.studentId
+      );
+      await community.save();
+
+      res.json({ success: true, message: "Moderator removed successfully" });
+    } catch (error) {
+      console.error("Remove moderator error:", error);
       res.status(500).json({ success: false, error: "Server error" });
     }
   }

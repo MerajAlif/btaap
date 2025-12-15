@@ -35,6 +35,10 @@ const communitySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    moderators: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }],
     creatorRole: {
       type: String,
       enum: ["student", "mentor"],
@@ -135,7 +139,7 @@ communitySchema.pre("save", async function (next) {
       mentor: this.mentor,
       isActive: true,
     });
-    
+
     if (mentorCommunities >= 10) {
       throw new Error("Maximum 10 active communities per user");
     }

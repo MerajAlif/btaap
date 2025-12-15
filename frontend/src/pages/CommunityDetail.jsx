@@ -284,8 +284,76 @@ export default function CommunityDetail() {
   if (loading) return <div className="p-8 text-center">Loading...</div>;
   if (!community) return <div className="p-8 text-center">Community not found</div>;
 
-  const isMentor = user?.id === (community.mentor?._id || community.mentor);
-  const canAccess = membershipStatus === 'approved' || isMentor;
+  const isCreator = user?.id === (community.mentor?._id || community.mentor);
+  const isModerator = community.moderators?.includes(user?.id);
+  const canManage = isCreator || isModerator;
+
+  const canAccess = membershipStatus === 'approved' || isCreator || isModerator;
+
+  const handleMakeModerator = async (studentId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${BASE_URL}/api/communities/${id}/moderators`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ studentId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCommunity(prev => ({ ...prev, moderators: data.moderators }));
+        setSuccess("Moderator added successfully");
+      } else {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError("Failed to add moderator");
+    }
+  };
+
+  const handleRemoveModerator = async (studentId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${BASE_URL}/api/communities/${id}/moderators/${studentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCommunity(prev => ({
+          ...prev,
+          moderators: prev.moderators.filter(m => m !== studentId)
+        }));
+        setSuccess("Moderator removed successfully");
+      } else {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError("Failed to remove moderator");
+    }
+  };
+
+  const handleRemoveMember = async (studentId) => {
+    if (!window.confirm("Are you sure you want to remove this member?")) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${BASE_URL}/api/communities/${id}/members/${studentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMembers(prev => prev.filter(m => m._id !== studentId));
+        setSuccess("Member removed successfully");
+      } else {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError("Failed to remove member");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
@@ -341,7 +409,7 @@ export default function CommunityDetail() {
             <TabsContent value="announcements" className="space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Announcements</h2>
-                {isMentor && (
+                {isCreator && (
                   <Dialog open={isAnnouncementOpen} onOpenChange={setIsAnnouncementOpen}>
                     <DialogTrigger asChild>
                       <Button><Megaphone className="w-4 h-4 mr-2" /> Post Announcement</Button>
@@ -432,7 +500,7 @@ export default function CommunityDetail() {
             <TabsContent value="schedule" className="space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Class Schedule</h2>
-                {isMentor && (
+                {isCreator && (
                   <Dialog open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
                     <DialogTrigger asChild>
                       <Button><Calendar className="w-4 h-4 mr-2" /> Schedule Class</Button>
@@ -528,7 +596,7 @@ export default function CommunityDetail() {
             <TabsContent value="resources" className="space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Resources</h2>
-                {isMentor && (
+                {canManage && (
                   <Dialog open={isResourceOpen} onOpenChange={setIsResourceOpen}>
                     <DialogTrigger asChild>
                       <Button><FileText className="w-4 h-4 mr-2" /> Upload Resource</Button>
@@ -671,21 +739,71 @@ export default function CommunityDetail() {
                       </div>
                     </div>
                     {/* Other Members */}
-                    {members.map(member => (
-                      <div key={member._id} className="flex items-center gap-3 p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow">
-                        <Avatar>
-                          <AvatarImage src={member.profile?.avatar} />
-                          <AvatarFallback>{member.name?.[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="overflow-hidden">
-                          <p className="font-semibold truncate">{member.name}</p>
-                          <Badge variant="outline" className="text-xs">Student</Badge>
-                          <Link to={`/profile/${member._id}`} className="text-xs text-blue-600 hover:underline block mt-1">
-                            View Profile
-                          </Link>
+                    {members.map(member => {
+                      const isMemberModerator = community.moderators?.includes(member._id);
+                      return (
+                        <div key={member._id} className="flex flex-col gap-2 p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow">
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage src={member.profile?.avatar} />
+                              <AvatarFallback>{member.name?.[0]}</AvatarFallback>
+                            </Avatar>
+                            <div className="overflow-hidden flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold truncate">{member.name}</p>
+                                {isMemberModerator && (
+                                  <Badge variant="secondary" className="text-[10px] bg-blue-100 text-blue-800">Moderator</Badge>
+                                )}
+                              </div>
+                              <Badge variant="outline" className="text-xs">Student</Badge>
+                              <Link to={`/profile/${member._id}`} className="text-xs text-blue-600 hover:underline block mt-1">
+                                View Profile
+                              </Link>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          {(isCreator || (canManage && !isMemberModerator)) && (
+                            <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t">
+                              {isCreator && (
+                                <>
+                                  {!isMemberModerator ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 text-xs"
+                                      onClick={() => handleMakeModerator(member._id)}
+                                    >
+                                      Make Monitor
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 text-xs text-orange-600 border-orange-200 hover:bg-orange-50"
+                                      onClick={() => handleRemoveModerator(member._id)}
+                                    >
+                                      Remove Monitor
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+
+                              {canManage && !isMemberModerator && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                                  onClick={() => handleRemoveMember(member._id)}
+                                >
+                                  Remove
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                     {members.length === 0 && (
                       <div className="col-span-full text-center text-sm text-gray-500 py-4">
                         No other members yet
@@ -698,7 +816,7 @@ export default function CommunityDetail() {
 
             {/* TASKS TAB */}
             <TabsContent value="tasks" className="space-y-4">
-              <TasksTab communityId={id} isMentor={isMentor} user={user} />
+              <TasksTab communityId={id} isMentor={isCreator} user={user} />
             </TabsContent>
 
             {/* LEADERBOARD TAB */}
