@@ -5,6 +5,7 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
 } from "@/components/ui/navigation-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -116,8 +117,8 @@ export default function Navbar() {
                         </p>
                         {user.role === "mentor" && (
                           <span className={`text-xs px-1.5 py-0.5 rounded ${user.approvalStatus === "approved"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-yellow-100 text-yellow-700"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
                             }`}>
                             {user.approvalStatus}
                           </span>
@@ -201,6 +202,18 @@ export default function Navbar() {
                           Admin Panel
                         </Link>
                       </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin/join-requests" className="cursor-pointer">
+                          <Users className="mr-2 h-4 w-4" />
+                          Join Requests
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin/complaints" className="cursor-pointer">
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          Complaints
+                        </Link>
+                      </DropdownMenuItem>
                     </>
                   )}
 
@@ -245,11 +258,15 @@ export default function Navbar() {
 
           {user ? (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <User className="h-4 w-4" />
+              <Link to="/profile">
+                <Button variant="ghost" size="icon">
+                  <User className="h-5 w-5" />
                 </Button>
-              </DropdownMenuTrigger>
+              </Link>
+
+              <Button variant="ghost" size="icon" onClick={logout}>
+                <LogOut className="h-5 w-5" />
+              </Button>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">

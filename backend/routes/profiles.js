@@ -27,7 +27,7 @@ router.get("/mentor/:id", optionalAuth, async (req, res) => {
     const ownedCommunities = await Community.find({
       mentor: req.params.id,
       isActive: true,
-    }).select("name description category coverImage joinCost statistics");
+    }).select("name description category coverImage joinCost statistics mentorSettings");
 
     // Get communities where mentor is a member
     const memberCommunities = await Membership.find({

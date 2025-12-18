@@ -27,6 +27,8 @@ import scheduleRoutes from "./routes/schedules.js";
 import notificationRoutes from "./routes/notifications.js";
 import taskRoutes from "./routes/tasks.js";
 import leaderboardRoutes from "./routes/leaderboard.js";
+import complaintRoutes from "./routes/complaints.js";
+import feedbackRoutes from "./routes/feedbacks.js";
 
 // Model imports for Socket.IO
 import DirectMessage from "./models/DirectMessage.js";
@@ -209,6 +211,8 @@ app.use("/api/schedules", scheduleRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
+app.use("/api/complaints", complaintRoutes);
+app.use("/api/feedbacks", feedbackRoutes);
 
 // Root route for health check
 app.get("/", (req, res) => {
@@ -230,7 +234,10 @@ app.get("/", (req, res) => {
       schedules: "/api/schedules",
       notifications: "/api/notifications",
       tasks: "/api/tasks",
-      leaderboard: "/api/leaderboard"
+      tasks: "/api/tasks",
+      leaderboard: "/api/leaderboard",
+      complaints: "/api/complaints",
+      feedbacks: "/api/feedbacks"
     },
   });
 });

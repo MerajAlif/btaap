@@ -332,7 +332,15 @@ export default function PublicProfile() {
                                                         </Avatar>
                                                         <div className="overflow-hidden">
                                                             <p className="font-medium truncate">{comm.name}</p>
-                                                            <p className="text-xs text-gray-500">{comm.statistics?.totalMembers || 0} members</p>
+                                                            <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                                                                <span>{comm.statistics?.totalMembers || 0} members</span>
+                                                                {comm.mentorSettings?.classesPerMonth > 0 && (
+                                                                    <span className="flex items-center gap-1 text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
+                                                                        <Calendar className="w-3 h-3" />
+                                                                        {comm.mentorSettings.classesPerMonth} Classes/mo
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </CardContent>
                                                 </Card>

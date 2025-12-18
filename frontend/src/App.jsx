@@ -1,6 +1,7 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import PDFStorage from "./components/PDFStorage";
 import PricingPage from "./components/PricingPage.jsx";
 import Login from "./components/auth/Login.jsx";
@@ -20,6 +21,8 @@ import Downloads from "@/pages/Downloads";
 import PendingApproval from "@/pages/PendingApproval";
 import MentorApproval from "@/pages/admin/MentorApproval";
 import AdminPaymentPanel from "@/pages/admin/AdminPaymentPanel";
+import AdminComplaints from "@/pages/admin/AdminComplaints";
+import AdminJoinRequestsPanel from "@/pages/admin/AdminJoinRequestsPanel";
 import PostsFeed from "@/pages/PostsFeed";
 import PostDetail from "@/pages/PostDetail";
 
@@ -98,12 +101,13 @@ function App() {
             />
             <Route path="/admin/mentors" element={<MentorApproval />} />
             <Route path="/admin/payments" element={<AdminPaymentPanel />} />
+            <Route path="/admin/complaints" element={<AdminComplaints />} />
+            <Route path="/admin/join-requests" element={<AdminJoinRequestsPanel />} />
           </Route>
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <Footer />
     </AuthProvider>
   );
 }

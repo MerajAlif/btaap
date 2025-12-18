@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import RejectionReasonDialog from "@/components/RejectionReasonDialog";
 import {
   getMyCommunities,
   getPendingRequests,
@@ -20,7 +21,9 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Eye
+  Eye,
+  Copy,
+  CreditCard
 } from "lucide-react";
 import { BASE_URL } from "@/lib/api";
 
@@ -33,6 +36,11 @@ export default function MentorDashboard() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(null);
   const [view, setView] = useState("overview"); // overview, requests, members
+  const [rejectionDialog, setRejectionDialog] = useState({
+    isOpen: false,
+    requestId: null,
+    studentName: ""
+  });
 
   useEffect(() => {
     loadCommunities();
@@ -80,17 +88,21 @@ export default function MentorDashboard() {
     }
   };
 
-  const handleProcessRequest = async (requestId, action) => {
+  const handleProcessRequest = async (requestId, action, studentName = "") => {
+    if (action === "reject") {
+      // Open rejection dialog instead of using prompt
+      setRejectionDialog({
+        isOpen: true,
+        requestId,
+        studentName
+      });
+      return;
+    }
+
+    // Handle approve action
     setProcessing(requestId);
     try {
-      let rejectionReason = "";
-      if (action === "reject") {
-        rejectionReason = window.prompt("Rejection reason (optional):") || "Not a fit";
-      }
-
-      await processJoinRequest(selectedCommunity._id, requestId, action, rejectionReason);
-
-      // Refresh data
+      await processJoinRequest(selectedCommunity._id, requestId, action, "");
       setPendingRequests(prev => prev.filter(r => r._id !== requestId));
       loadCommunities(); // Refresh stats
     } catch (error) {
@@ -98,6 +110,29 @@ export default function MentorDashboard() {
     } finally {
       setProcessing(null);
     }
+  };
+
+  const handleConfirmRejection = async (reason) => {
+    const { requestId } = rejectionDialog;
+    setProcessing(requestId);
+
+    try {
+      await processJoinRequest(selectedCommunity._id, requestId, "reject", reason);
+      setPendingRequests(prev => prev.filter(r => r._id !== requestId));
+      loadCommunities(); // Refresh stats
+      setRejectionDialog({ isOpen: false, requestId: null, studentName: "" });
+    } catch (error) {
+      alert(error.message || "Failed to reject request");
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      // Could add a toast notification here
+      alert("Transaction ID copied!");
+    });
   };
 
   if (loading) {
@@ -216,8 +251,8 @@ export default function MentorDashboard() {
                     setView("overview");
                   }}
                   className={`w-full text-left p-3 rounded-lg transition-all ${selectedCommunity?._id === community._id
-                      ? "bg-purple-100 border-2 border-purple-300"
-                      : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
+                    ? "bg-purple-100 border-2 border-purple-300"
+                    : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
                     }`}
                 >
                   <h4 className="font-semibold text-sm text-gray-900 truncate">
@@ -323,32 +358,70 @@ export default function MentorDashboard() {
                           {pendingRequests.map((request) => (
                             <div
                               key={request._id}
-                              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                              className="p-4 bg-gray-50 rounded-lg border border-gray-200"
                             >
-                              <div>
-                                <p className="font-semibold">{request.student?.name}</p>
-                                <p className="text-sm text-gray-600">{request.student?.email}</p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Requested {new Date(request.createdAt).toLocaleDateString()}
-                                </p>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleProcessRequest(request._id, "approve")}
-                                  disabled={processing === request._id}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => handleProcessRequest(request._id, "reject")}
-                                  disabled={processing === request._id}
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </Button>
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="font-semibold text-gray-900">{request.student?.name}</p>
+                                    {request.paymentStatus && request.paymentStatus !== "free" && (
+                                      <Badge
+                                        variant={request.paymentStatus === "verified" ? "default" : "secondary"}
+                                        className="text-xs"
+                                      >
+                                        {request.paymentStatus}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-600">{request.student?.email}</p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Requested {new Date(request.createdAt).toLocaleDateString()}
+                                  </p>
+
+                                  {/* Transaction ID Display */}
+                                  {request.transactionId && (
+                                    <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
+                                      <div className="flex items-center justify-between">
+                                        <div>
+                                          <p className="text-xs text-blue-600 font-medium mb-1">
+                                            <CreditCard className="inline w-3 h-3 mr-1" />
+                                            Transaction ID
+                                          </p>
+                                          <p className="font-mono text-sm text-gray-900">
+                                            {request.transactionId}
+                                          </p>
+                                        </div>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => copyToClipboard(request.transactionId)}
+                                          className="h-8"
+                                        >
+                                          <Copy className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleProcessRequest(request._id, "approve")}
+                                    disabled={processing === request._id}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleProcessRequest(request._id, "reject", request.student?.name)}
+                                    disabled={processing === request._id}
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -395,6 +468,15 @@ export default function MentorDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Rejection Reason Dialog */}
+      <RejectionReasonDialog
+        isOpen={rejectionDialog.isOpen}
+        onClose={() => setRejectionDialog({ isOpen: false, requestId: null, studentName: "" })}
+        onConfirm={handleConfirmRejection}
+        studentName={rejectionDialog.studentName}
+        isProcessing={processing === rejectionDialog.requestId}
+      />
     </div>
   );
 }

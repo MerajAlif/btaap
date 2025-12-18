@@ -3,6 +3,7 @@ import express from "express";
 import Community from "../models/Community.js";
 import Membership from "../models/Membership.js";
 import User from "../models/User.js";
+import SystemSetting from "../models/SystemSetting.js";
 import {
   protect,
   authorize,
@@ -78,6 +79,83 @@ router.get("/", async (req, res) => {
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
+
+// ========== ADMIN ROUTES (must be before other routes) ==========
+
+// Get all join requests across all communities (admin only)
+router.get(
+  "/admin/all-requests",
+  protect,
+  authorize("admin"),
+  async (req, res) => {
+    try {
+      const { status, search } = req.query;
+
+      // Build query
+      const query = {};
+      if (status && status !== "all") {
+        query.status = status;
+      }
+
+      // Fetch all membership requests
+      let requests = await Membership.find(query)
+        .populate("student", "name email profile.avatar")
+        .populate({
+          path: "community",
+          select: "name mentor creatorRole mentorSettings",
+          populate: { path: "mentor", select: "name email" }
+        })
+        .populate("approvedBy", "name")
+        .sort("-createdAt");
+
+      // Apply search filter if provided
+      if (search) {
+        const searchLower = search.toLowerCase();
+        requests = requests.filter(req =>
+          req.student?.name.toLowerCase().includes(searchLower) ||
+          req.student?.email.toLowerCase().includes(searchLower) ||
+          req.community?.name.toLowerCase().includes(searchLower) ||
+          req.transactionId?.toLowerCase().includes(searchLower)
+        );
+      }
+
+      res.json({ success: true, requests, total: requests.length });
+    } catch (error) {
+      console.error("Get all requests error:", error);
+      res.status(500).json({ success: false, error: "Server error" });
+    }
+  }
+);
+
+// ADMIN: Verify payment for a membership
+router.patch(
+  "/admin/memberships/:id/verify-payment",
+  protect,
+  authorize("admin"),
+  async (req, res) => {
+    try {
+      const membership = await Membership.findById(req.params.id);
+
+      if (!membership) {
+        return res
+          .status(404)
+          .json({ success: false, error: "Membership request not found" });
+      }
+
+      membership.paymentStatus = "verified";
+      await membership.save();
+
+      res.json({
+        success: true,
+        message: "Payment verified successfully",
+        membership,
+      });
+    } catch (error) {
+      console.error("Verify payment error:", error);
+      res.status(500).json({ success: false, error: "Server error" });
+    }
+  }
+);
 
 // ========== MENTOR ROUTES (must be before /:id routes) ==========
 
@@ -159,6 +237,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
     }
 
     let membershipStatus = "none";
+    let membershipDetails = null;
     if (req.user) {
       const membership = await Membership.findOne({
         student: req.user._id,
@@ -171,10 +250,21 @@ router.get("/:id", optionalAuth, async (req, res) => {
       });
       if (membership) {
         membershipStatus = membership.status;
+        // Include full details for frontend display (validity, payment, history)
+        membershipDetails = {
+          status: membership.status,
+          rejectionReason: membership.rejectionReason,
+          createdAt: membership.createdAt,
+          joinedAt: membership.joinedAt,
+          paymentStatus: membership.paymentStatus,
+          creditsPaid: membership.creditsPaid,
+          transactionId: membership.transactionId,
+          history: membership.history
+        };
       }
     }
 
-    res.json({ success: true, community, membershipStatus });
+    res.json({ success: true, community, membershipStatus, membershipDetails });
   } catch (error) {
     console.error("Get community error:", error);
     res.status(500).json({ success: false, error: "Server error" });
@@ -206,6 +296,7 @@ router.post(
         maxMembers,
         coverImage,
         settings,
+        mentorSettings,
       } = req.body;
 
       if (!name || !description || !category) {
@@ -216,7 +307,16 @@ router.post(
       }
 
       // ✅ Check and deduct credits
-      const COMMUNITY_CREATION_COST = req.user.role === "student" ? 0 : 10; // 0 for students, 10 for mentors
+      // Fetch cost from global settings (default to 5 if not set)
+      let mentorCreationCost = 5;
+      try {
+        const costSetting = await SystemSetting.findOne({ key: 'mentorCommunityCreationCost' });
+        if (costSetting) mentorCreationCost = Number(costSetting.value);
+      } catch (err) {
+        console.error("Failed to fetch system setting:", err);
+      }
+
+      const COMMUNITY_CREATION_COST = req.user.role === "student" ? 0 : mentorCreationCost;
       const user = await User.findById(req.user._id);
 
       if (!user) {
@@ -251,7 +351,7 @@ router.post(
         chat: true,
         resources: true,
         classes: req.user.role === "mentor", // Only mentors can have classes
-        announcements: req.user.role === "mentor", // Only mentors can have announcements
+        announcements: true, // Enabled for all communities
       };
 
       // Create the community
@@ -260,10 +360,11 @@ router.post(
         description,
         category,
         tags: tags || [],
-        joinCost: req.user.role === "student" ? 0 : 5, // Free for student communities
+        joinCost: req.user.role === "student" ? 0 : 0, // FIXED JOIN COST REMOVED (Set to 0, or controlled by mentorSettings)
         maxMembers,
         coverImage: coverImage || "",
         settings: settings || {},
+        mentorSettings: mentorSettings || {},
         mentor: req.user._id,
         creatorRole: req.user.role,
         features,
@@ -351,6 +452,7 @@ router.put(
         "maxMembers",
         "coverImage",
         "settings",
+        "mentorSettings",
         "isActive",
       ];
 
@@ -544,6 +646,7 @@ router.get("/:id/members", protect, authorize("mentor"), async (req, res) => {
 // Request to join community
 router.post("/:id/join", protect, authorize("student"), async (req, res) => {
   try {
+    const { transactionId } = req.body;
     const community = await Community.findById(req.params.id);
 
     if (!community) {
@@ -558,20 +661,22 @@ router.post("/:id/join", protect, authorize("student"), async (req, res) => {
         .json({ success: false, error: "Community is not active" });
     }
 
+    // Check for ANY existing membership to prevent duplicate key errors
     const existingMembership = await Membership.findOne({
       student: req.user._id,
       community: req.params.id,
-      status: { $in: ["pending", "approved"] },
     });
 
     if (existingMembership) {
-      return res.status(400).json({
-        success: false,
-        error:
-          existingMembership.status === "approved"
-            ? "Already a member"
-            : "Join request already pending",
-      });
+      if (existingMembership.status === "approved") {
+        return res.status(400).json({ success: false, error: "Already a member" });
+      }
+      if (existingMembership.status === "pending") {
+        return res.status(400).json({ success: false, error: "Join request already pending" });
+      }
+
+      // If status is rejected, left, or removed, we update the existing record
+      // instead of creating a new one (which would cause duplicate key error)
     }
 
     if (
@@ -584,7 +689,16 @@ router.post("/:id/join", protect, authorize("student"), async (req, res) => {
     }
 
     let remainingCredits = req.user.credits;
-    if (community.joinCost > 0) {
+
+    // Check if it's a mentor community with manual payment
+    const isMentorCommunity = community.creatorRole === "mentor";
+    const requiresManualPayment = isMentorCommunity && community.mentorSettings?.monthlyFee > 0;
+
+    if (requiresManualPayment) {
+      if (!transactionId) {
+        return res.status(400).json({ success: false, error: "Transaction ID is required for this community" });
+      }
+    } else if (community.joinCost > 0) {
       remainingCredits = await deductCredits(
         req.user,
         community.joinCost,
@@ -592,12 +706,48 @@ router.post("/:id/join", protect, authorize("student"), async (req, res) => {
       );
     }
 
-    const membership = await Membership.create({
-      student: req.user._id,
-      community: req.params.id,
-      status: community.settings.autoApprove ? "approved" : "pending",
-      creditsPaid: community.joinCost,
-    });
+    let membership;
+    const newStatus = community.settings.autoApprove ? "approved" : "pending";
+    const newCreditsPaid = requiresManualPayment ? 0 : community.joinCost;
+    const newTransactionId = requiresManualPayment ? transactionId : undefined;
+    const newPaymentStatus = requiresManualPayment ? "pending" : "free";
+
+    if (existingMembership) {
+      // Archive current state to history
+      if (!existingMembership.history) {
+        existingMembership.history = [];
+      }
+
+      existingMembership.history.push({
+        status: existingMembership.status,
+        updatedAt: existingMembership.updatedAt || new Date(),
+        rejectionReason: existingMembership.rejectionReason,
+        approvedBy: existingMembership.approvedBy
+      });
+
+      // Update existing membership
+      existingMembership.status = newStatus;
+      existingMembership.creditsPaid = newCreditsPaid;
+      existingMembership.transactionId = newTransactionId;
+      existingMembership.paymentStatus = newPaymentStatus;
+      existingMembership.rejectionReason = undefined; // Clear previous rejection reason
+      existingMembership.approvedBy = undefined; // Clear previous approver
+      existingMembership.joinedAt = new Date(); // Reset join date
+      // We explicitly update createdAt to bring it to top of lists sorted by creation
+
+      await existingMembership.save();
+      membership = existingMembership;
+    } else {
+      // Create new membership
+      membership = await Membership.create({
+        student: req.user._id,
+        community: req.params.id,
+        status: newStatus,
+        creditsPaid: newCreditsPaid,
+        transactionId: newTransactionId,
+        paymentStatus: newPaymentStatus,
+      });
+    }
 
     if (community.settings.autoApprove) {
       await Community.findByIdAndUpdate(req.params.id, {
@@ -747,6 +897,39 @@ router.post(
       res.json({ success: true, message: "Moderator added successfully", moderators: community.moderators });
     } catch (error) {
       console.error("Add moderator error:", error);
+      res.status(500).json({ success: false, error: "Server error" });
+    }
+  }
+);
+
+// Confirm Refund Received (Student only)
+router.post(
+  "/requests/:id/confirm-refund",
+  protect,
+  authorize("student"),
+  async (req, res) => {
+    try {
+      const membership = await Membership.findById(req.params.id);
+
+      if (!membership) {
+        return res.status(404).json({ success: false, error: "Request not found" });
+      }
+
+      if (membership.student.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, error: "Not authorized" });
+      }
+
+      if (membership.status !== "refund_pending") {
+        return res.status(400).json({ success: false, error: "This request is not pending refund" });
+      }
+
+      membership.status = "refunded";
+      membership.paymentStatus = "refunded";
+      await membership.save();
+
+      res.json({ success: true, message: "Refund confirmed. Request closed." });
+    } catch (error) {
+      console.error("Confirm refund error:", error);
       res.status(500).json({ success: false, error: "Server error" });
     }
   }

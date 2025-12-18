@@ -23,8 +23,12 @@ export default function CreateCommunity() {
     tags: "",
     maxMembers: "",
     coverImage: "",
-    autoApprove: false,
     isPrivate: false,
+    // Mentor specific
+    bkashNumber: "",
+    monthlyFee: "",
+    classesPerMonth: "",
+    curriculumDescription: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -67,14 +71,18 @@ export default function CreateCommunity() {
         description: form.description.trim(),
         category: form.category.trim(),
         tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
-        joinCost: 5,
         maxMembers: form.maxMembers ? Number(form.maxMembers) : null,
         coverImage: form.coverImage.trim(),
         settings: {
-          autoApprove: form.autoApprove,
           isPrivate: form.isPrivate,
           allowPosts: true,
         },
+        mentorSettings: user.role === "mentor" ? {
+          bkashNumber: form.bkashNumber,
+          monthlyFee: Number(form.monthlyFee),
+          classesPerMonth: Number(form.classesPerMonth),
+          curriculumDescription: form.curriculumDescription,
+        } : {},
       };
 
       const data = await createCommunity(payload);
@@ -265,18 +273,6 @@ export default function CreateCommunity() {
               </div>
 
               <div className="space-y-2">
-                <Label>Join Cost</Label>
-                <Input
-                  disabled
-                  value={user?.role === "student" ? "Free" : "5 Credits"}
-                  className="bg-gray-50"
-                />
-                <p className="text-xs text-gray-500">
-                  {user?.role === "student" ? "Standard cost for other roles is 5 credits" : "Fixed join cost for all communities"}
-                </p>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="maxMembers">Max Members (optional)</Label>
                 <Input
                   id="maxMembers"
@@ -294,18 +290,6 @@ export default function CreateCommunity() {
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label htmlFor="autoApprove">Auto-approve join requests</Label>
-                    <p className="text-xs text-gray-500">Members can join instantly without approval</p>
-                  </div>
-                  <Switch
-                    id="autoApprove"
-                    checked={form.autoApprove}
-                    onCheckedChange={(checked) => setForm(prev => ({ ...prev, autoApprove: checked }))}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
                     <Label htmlFor="isPrivate">Private community</Label>
                     <p className="text-xs text-gray-500">Only visible to members</p>
                   </div>
@@ -316,6 +300,60 @@ export default function CreateCommunity() {
                   />
                 </div>
               </div>
+
+              {user?.role === "mentor" && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="font-semibold text-purple-900">Mentor Settings</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="bkashNumber">Bkash Number (for payments)</Label>
+                      <Input
+                        id="bkashNumber"
+                        name="bkashNumber"
+                        value={form.bkashNumber}
+                        onChange={handleChange}
+                        placeholder="017..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="monthlyFee">Monthly Fee (BDT)</Label>
+                      <Input
+                        id="monthlyFee"
+                        name="monthlyFee"
+                        type="number"
+                        min="0"
+                        value={form.monthlyFee}
+                        onChange={handleChange}
+                        placeholder="e.g. 500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="classesPerMonth">Classes per Month</Label>
+                      <Input
+                        id="classesPerMonth"
+                        name="classesPerMonth"
+                        type="number"
+                        min="1"
+                        value={form.classesPerMonth}
+                        onChange={handleChange}
+                        placeholder="e.g. 8"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="curriculumDescription">Month's Plan (Curriculum)</Label>
+                    <Textarea
+                      id="curriculumDescription"
+                      name="curriculumDescription"
+                      value={form.curriculumDescription}
+                      onChange={handleChange}
+                      placeholder="Outline what students will learn this month..."
+                      rows={4}
+                      maxLength={2000}
+                    />
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

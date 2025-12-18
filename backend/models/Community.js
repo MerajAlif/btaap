@@ -99,6 +99,20 @@ const communitySchema = new mongoose.Schema(
         default: true,
       },
     },
+    mentorSettings: {
+      bkashNumber: { type: String, trim: true },
+      monthlyFee: { type: Number, min: 0, default: 0 },
+      classesPerMonth: { type: Number, min: 0 },
+      totalClasses: { type: Number, min: 0 }, // New: Total classes in validity period
+      validityDuration: { type: Number }, // New: e.g. 30
+      validityUnit: { // New: 'days', 'months', 'fixed'
+        type: String,
+        enum: ['days', 'months', 'fixed'],
+        default: 'months'
+      },
+      curriculumDescription: { type: String, maxlength: 2000 },
+      paymentInstructions: { type: String },
+    },
     statistics: {
       totalMembers: {
         type: Number,

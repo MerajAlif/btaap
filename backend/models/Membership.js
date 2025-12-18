@@ -17,7 +17,7 @@ const membershipSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected", "left", "removed"],
+      enum: ["pending", "approved", "rejected", "left", "removed", "refund_pending", "refunded"],
       default: "pending",
       required: true,
       index: true,
@@ -45,6 +45,11 @@ const membershipSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "verified", "failed", "free", "refund_pending", "refunded"],
+      default: "free",
+    },
     role: {
       type: String,
       enum: ["member", "moderator"],
@@ -66,6 +71,23 @@ const membershipSchema = new mongoose.Schema(
         default: Date.now,
       },
     },
+    // Track history of interactions (rejections, leaves, etc.)
+    history: [{
+      status: {
+        type: String,
+        required: true,
+        enum: ["pending", "approved", "rejected", "left", "removed", "refund_pending", "refunded"]
+      },
+      updatedAt: {
+        type: Date,
+        default: Date.now
+      },
+      rejectionReason: String,
+      approvedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+      }
+    }],
   },
   {
     timestamps: true,

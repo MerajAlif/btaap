@@ -1,6 +1,7 @@
 // src/components/Footer.jsx
 import { Link } from "react-router-dom";
 import { Facebook, Twitter, Instagram, Linkedin, Mail, MapPin, Phone } from "lucide-react";
+import { FeedbackForm } from "@/components/FeedbackForm";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -39,36 +40,16 @@ export default function Footer() {
               Your complete learning platform for academic success. Access thousands of resources and connect with expert mentors.
             </p>
             <div className="flex gap-3">
-              <a
-                href="https://facebook.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 rounded-full bg-emerald-800 hover:bg-emerald-700 flex items-center justify-center transition-colors"
-              >
+              <a href="#" className="w-9 h-9 rounded-full bg-emerald-800 hover:bg-emerald-700 flex items-center justify-center transition-colors">
                 <Facebook className="w-4 h-4" />
               </a>
-              <a
-                href="https://twitter.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 rounded-full bg-emerald-800 hover:bg-emerald-700 flex items-center justify-center transition-colors"
-              >
+              <a href="#" className="w-9 h-9 rounded-full bg-emerald-800 hover:bg-emerald-700 flex items-center justify-center transition-colors">
                 <Twitter className="w-4 h-4" />
               </a>
-              <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 rounded-full bg-emerald-800 hover:bg-emerald-700 flex items-center justify-center transition-colors"
-              >
+              <a href="#" className="w-9 h-9 rounded-full bg-emerald-800 hover:bg-emerald-700 flex items-center justify-center transition-colors">
                 <Instagram className="w-4 h-4" />
               </a>
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 rounded-full bg-emerald-800 hover:bg-emerald-700 flex items-center justify-center transition-colors"
-              >
+              <a href="#" className="w-9 h-9 rounded-full bg-emerald-800 hover:bg-emerald-700 flex items-center justify-center transition-colors">
                 <Linkedin className="w-4 h-4" />
               </a>
             </div>
@@ -80,10 +61,7 @@ export default function Footer() {
             <ul className="space-y-2">
               {quickLinks.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    to={link.href}
-                    className="text-emerald-100 hover:text-white transition-colors text-sm"
-                  >
+                  <Link to={link.href} className="text-emerald-100 hover:text-white transition-colors text-sm">
                     {link.label}
                   </Link>
                 </li>
@@ -97,10 +75,7 @@ export default function Footer() {
             <ul className="space-y-2">
               {resources.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    to={link.href}
-                    className="text-emerald-100 hover:text-white transition-colors text-sm"
-                  >
+                  <Link to={link.href} className="text-emerald-100 hover:text-white transition-colors text-sm">
                     {link.label}
                   </Link>
                 </li>
@@ -108,25 +83,32 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contact */}
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-emerald-200">Contact Us</h4>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-2 text-emerald-100 text-sm">
-                <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>123 Learning Street, Dhaka, Bangladesh</span>
-              </li>
-              <li className="flex items-center gap-2 text-emerald-100 text-sm">
-                <Phone className="w-4 h-4 flex-shrink-0" />
-                <span>+880 1234-567890</span>
-              </li>
-              <li className="flex items-center gap-2 text-emerald-100 text-sm">
-                <Mail className="w-4 h-4 flex-shrink-0" />
-                <a href="mailto:support@btaap.com" className="hover:text-white transition-colors">
-                  support@btaap.com
-                </a>
-              </li>
-            </ul>
+          {/* Contact & Feedback */}
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold text-emerald-200">Contact Us</h4>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-2 text-emerald-100 text-sm">
+                  <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>123 Learning Street, Dhaka, Bangladesh</span>
+                </li>
+                <li className="flex items-center gap-2 text-emerald-100 text-sm">
+                  <Phone className="w-4 h-4 flex-shrink-0" />
+                  <span>+880 1234-567890</span>
+                </li>
+                <li className="flex items-center gap-2 text-emerald-100 text-sm">
+                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <a href="mailto:support@btaap.com" className="hover:text-white transition-colors">
+                    support@btaap.com
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-emerald-200 uppercase tracking-wider">Feedback</h4>
+              <FeedbackForm />
+            </div>
           </div>
         </div>
 

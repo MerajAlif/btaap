@@ -80,3 +80,12 @@ export const leaveCommunity = async (communityId) => {
     method: "DELETE",
   });
 };
+
+// ========== ADMIN ==========
+
+// Get all join requests across all communities (admin only)
+export const getAllJoinRequests = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const path = query ? `/api/communities/admin/all-requests?${query}` : `/api/communities/admin/all-requests`;
+  return api(path);
+};

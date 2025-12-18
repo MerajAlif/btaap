@@ -56,8 +56,8 @@ router.post("/", protect, async (req, res) => {
             return res.status(404).json({ success: false, error: "Community not found" });
         }
 
-        if (community.mentor.toString() !== req.user.id) {
-            return res.status(403).json({ success: false, error: "Only mentors can create announcements" });
+        if (community.mentor.toString() !== req.user.id && !community.moderators?.includes(req.user.id)) {
+            return res.status(403).json({ success: false, error: "Only mentors and moderators can create announcements" });
         }
 
         const announcement = await Announcement.create({
