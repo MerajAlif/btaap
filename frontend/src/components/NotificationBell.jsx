@@ -32,7 +32,7 @@ export default function NotificationBell() {
         fetchUnreadCount();
 
         // Connect to socket
-        socketRef.current = io("http://localhost:5000");
+        socketRef.current = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
         socketRef.current.emit("user_online", user.id);
 
         // Listen for new notifications

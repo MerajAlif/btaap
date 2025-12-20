@@ -52,7 +52,7 @@ export default function Chat() {
         console.log("[Chat] Socket effect triggered, user:", user);
         if (user) {
             console.log("[Chat] Initializing socket connection...");
-            const newSocket = io("http://localhost:5000", {
+            const newSocket = io(import.meta.env.VITE_API_URL || "http://localhost:5000", {
                 reconnection: true,
                 reconnectionDelay: 1000,
                 reconnectionAttempts: 5,

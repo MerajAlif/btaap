@@ -43,9 +43,18 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
+
+// Allowed origins for CORS
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://btaap-psi.vercel.app",
+  process.env.FRONTEND_URL // Allow custom frontend URL from env
+].filter(Boolean); // Remove undefined values
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   },
@@ -57,7 +66,17 @@ const uploadRoot = path.join(__dirname, "uploads");
 // Middleware
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log(`CORS blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Range"],
