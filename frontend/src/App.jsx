@@ -11,6 +11,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 // Pages
 import Home from "@/pages/Home";
+import About from "@/pages/About";
 import PublicProfile from "@/pages/PublicProfile";
 import Connections from "@/pages/Connections";
 import Profile from "@/pages/Profile";
@@ -22,8 +23,11 @@ import PendingApproval from "@/pages/PendingApproval";
 import MentorApproval from "@/pages/admin/MentorApproval";
 import AdminPaymentPanel from "@/pages/admin/AdminPaymentPanel";
 import AdminComplaints from "@/pages/admin/AdminComplaints";
+import AdminFeedbackPanel from "@/pages/admin/AdminFeedbackPanel";
 import AdminJoinRequestsPanel from "@/pages/admin/AdminJoinRequestsPanel";
 import PostsFeed from "@/pages/PostsFeed";
+import Complaints from "@/pages/Complaints";
+import Feedback from "@/pages/Feedback";
 import PostDetail from "@/pages/PostDetail";
 
 // Community pages
@@ -49,11 +53,14 @@ function App() {
         <Routes>
           {/* Main app pages */}
           <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
           <Route path="/library" element={<PDFStorage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
+          <Route path="/complaints" element={<Complaints />} />
+          <Route path="/feedback" element={<Feedback />} />
 
           {/* Communities - Public */}
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
@@ -102,6 +109,7 @@ function App() {
             <Route path="/admin/mentors" element={<MentorApproval />} />
             <Route path="/admin/payments" element={<AdminPaymentPanel />} />
             <Route path="/admin/complaints" element={<AdminComplaints />} />
+            <Route path="/admin/feedback" element={<AdminFeedbackPanel />} />
             <Route path="/admin/join-requests" element={<AdminJoinRequestsPanel />} />
           </Route>
 

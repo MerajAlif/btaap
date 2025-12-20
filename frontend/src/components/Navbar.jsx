@@ -4,6 +4,8 @@ import {
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
+  NavigationMenuTrigger,
+  NavigationMenuContent,
 } from "@/components/ui/navigation-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -29,15 +31,34 @@ import {
   LayoutDashboard,
   Award,
   Sparkles,
+  Star,
 } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 
 const navItems = [
   { label: "Home", href: "/" },
-  { label: "Library", href: "/library" },
-  { label: "Communities", href: "/communities" },
-  { label: "Solving Hub", href: "/posts" },
-  { label: "Pricing", href: "/pricing" },
+  { label: "About Us", href: "/about" },
+];
+
+const servicesItems = [
+  {
+    label: "Library",
+    href: "/library",
+    icon: BookOpen,
+    description: "Access study materials and PDFs"
+  },
+  {
+    label: "Communities",
+    href: "/communities",
+    icon: Users,
+    description: "Join learning communities"
+  },
+  {
+    label: "Solving Hub",
+    href: "/posts",
+    icon: MessageSquare,
+    description: "Ask questions and help others"
+  },
 ];
 
 const baseLink =
@@ -65,6 +86,7 @@ export default function Navbar() {
         {/* Desktop Menu */}
         <NavigationMenu className="hidden md:block">
           <NavigationMenuList>
+            {/* Regular nav items */}
             {navItems.map((item) => (
               <NavigationMenuItem key={item.href}>
                 <NavigationMenuLink asChild>
@@ -79,6 +101,56 @@ export default function Navbar() {
                 </NavigationMenuLink>
               </NavigationMenuItem>
             ))}
+
+            {/* Services Dropdown */}
+            <NavigationMenuItem>
+              <NavigationMenuTrigger className={baseLink}>
+                Services
+              </NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <ul className="grid w-[320px] gap-2 p-4">
+                  {servicesItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <li key={item.href}>
+                        <NavigationMenuLink asChild>
+                          <Link
+                            to={item.href}
+                            className="block select-none rounded-lg p-3 leading-none no-underline outline-none transition-all hover:bg-emerald-50 hover:shadow-md focus:bg-emerald-50 group border border-transparent hover:border-emerald-200"
+                          >
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center group-hover:from-emerald-200 group-hover:to-teal-200 transition-all group-hover:scale-110">
+                                <Icon className="w-5 h-5 text-emerald-700" />
+                              </div>
+                              <div className="text-sm font-semibold text-gray-900">
+                                {item.label}
+                              </div>
+                            </div>
+                            <p className="text-xs leading-relaxed text-gray-600 ml-[52px]">
+                              {item.description}
+                            </p>
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+
+            {/* Pricing Link */}
+            <NavigationMenuItem>
+              <NavigationMenuLink asChild>
+                <NavLink
+                  to="/pricing"
+                  className={({ isActive }) =>
+                    `${baseLink} ${isActive ? activeLink : ""}`
+                  }
+                >
+                  Pricing
+                </NavLink>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
 
@@ -214,6 +286,12 @@ export default function Navbar() {
                           Complaints
                         </Link>
                       </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin/feedback" className="cursor-pointer">
+                          <Star className="mr-2 h-4 w-4" />
+                          Feedback
+                        </Link>
+                      </DropdownMenuItem>
                     </>
                   )}
 
@@ -253,25 +331,48 @@ export default function Navbar() {
                   <Link to={item.href}>{item.label}</Link>
                 </DropdownMenuItem>
               ))}
+
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Services</DropdownMenuLabel>
+
+              {servicesItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <DropdownMenuItem key={item.href} asChild>
+                    <Link to={item.href} className="flex items-center">
+                      <Icon className="mr-2 h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  </DropdownMenuItem>
+                );
+              })}
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem asChild>
+                <Link to="/pricing" className="flex items-center">
+                  <Coins className="mr-2 h-4 w-4" />
+                  Pricing
+                </Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
           {user ? (
             <DropdownMenu>
-              <Link to="/profile">
+              <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
                   <User className="h-5 w-5" />
                 </Button>
-              </Link>
-
-              <Button variant="ghost" size="icon" onClick={logout}>
-                <LogOut className="h-5 w-5" />
-              </Button>
+              </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium">{user.name}</p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      Role: {user.role}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -289,12 +390,20 @@ export default function Navbar() {
                 </DropdownMenuItem>
 
                 {user.role === "student" && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/my-communities">
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      My Communities
-                    </Link>
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link to="/my-communities">
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        My Communities
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/apply-mentor">
+                        <Award className="mr-2 h-4 w-4 text-amber-600" />
+                        <span className="text-amber-600 font-medium">Become a Mentor</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
                 )}
 
                 {isApprovedMentor && (
@@ -305,6 +414,20 @@ export default function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                 )}
+
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/my-posts">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    My Posts
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/downloads">
+                    <Download className="mr-2 h-4 w-4" />
+                    Downloads
+                  </Link>
+                </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>

@@ -37,4 +37,22 @@ router.get("/", protect, authorize("admin"), async (req, res) => {
     }
 });
 
+// Admin: Mark feedback as reviewed
+router.put("/:id/review", protect, authorize("admin"), async (req, res) => {
+    try {
+        const feedback = await Feedback.findById(req.params.id);
+        if (!feedback) {
+            return res.status(404).json({ success: false, error: "Feedback not found" });
+        }
+
+        feedback.isReviewed = true;
+        await feedback.save();
+
+        res.json({ success: true, feedback });
+    } catch (error) {
+        console.error("Update feedback error:", error);
+        res.status(500).json({ success: false, error: "Server error" });
+    }
+});
+
 export default router;
