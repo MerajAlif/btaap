@@ -49,6 +49,8 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
   "https://btaap-psi.vercel.app",
+  "https://www.btaap.com",
+  "https://btaap.com",
   process.env.FRONTEND_URL // Allow custom frontend URL from env
 ].filter(Boolean); // Remove undefined values
 
