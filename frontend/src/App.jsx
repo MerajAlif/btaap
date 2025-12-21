@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import PDFStorage from "./components/PDFStorage";
-import PricingPage from "./components/PricingPage.jsx";
+import Pricing from "@/pages/Pricing";
 import Login from "./components/auth/Login.jsx";
 import Register from "./components/auth/Register.jsx";
 import { AuthProvider } from "@/context/AuthContext";
@@ -55,7 +55,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/library" element={<PDFStorage />} />
-          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
