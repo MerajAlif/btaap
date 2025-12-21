@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
 import useAuth from "@/hooks/useAuth";
-import { Search, BookOpen, Users, ArrowRight, Star, ShieldCheck, Sparkles, GraduationCap } from "lucide-react";
+import { Search, BookOpen, Users, ArrowRight, Star, ShieldCheck, Sparkles, GraduationCap, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api, BASE_URL } from "@/lib/api";
 
@@ -12,18 +12,28 @@ export default function Home() {
   const { user } = useAuth();
   const [mentors, setMentors] = useState([]);
   const [communities, setCommunities] = useState([]);
+  const [solvingHubPosts, setSolvingHubPosts] = useState([]);
+  const [libraryBooks, setLibraryBooks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch approved mentors and popular communities
+  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [mentorsRes, communitiesRes] = await Promise.all([
+        const [mentorsRes, communitiesRes, postsRes, booksRes] = await Promise.all([
           api("/api/profiles/mentors?limit=4"),
-          api("/api/communities?limit=6&sort=-statistics.totalMembers")
+          api("/api/communities?limit=6&sort=-statistics.totalMembers"),
+          api("/api/posts?limit=3"),
+          api("/api/pdfs?limit=4&sortBy=downloads")
         ]);
+
         setMentors(mentorsRes.mentors || []);
         setCommunities(communitiesRes.communities || []);
+        setSolvingHubPosts(postsRes.posts || []);
+
+        // Handle array response for books directly
+        setLibraryBooks(Array.isArray(booksRes) ? booksRes : []);
+
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -131,39 +141,51 @@ export default function Home() {
       {/* FEATURES GRID */}
       <section className="py-20 px-4 md:px-8 bg-white/50 relative z-10">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Link to="/mentors" className="group">
               <Card className="h-full border-0 shadow-lg shadow-emerald-100 hover:shadow-xl hover:shadow-emerald-200/50 transition-all duration-300 hover:-translate-y-2 bg-gradient-to-br from-white to-emerald-50/50">
-                <CardContent className="p-8">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <Users className="w-7 h-7 text-emerald-600" />
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <Users className="w-6 h-6 text-emerald-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Find Mentors</h3>
-                  <p className="text-gray-500 leading-relaxed">Connect with industry experts for 1-on-1 guidance and career advice.</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Find Mentors</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">Connect with industry experts for 1-on-1 guidance and career advice.</p>
                 </CardContent>
               </Card>
             </Link>
 
             <Link to="/communities" className="group">
               <Card className="h-full border-0 shadow-lg shadow-teal-100 hover:shadow-xl hover:shadow-teal-200/50 transition-all duration-300 hover:-translate-y-2 bg-gradient-to-br from-white to-teal-50/50">
-                <CardContent className="p-8">
-                  <div className="w-14 h-14 rounded-2xl bg-teal-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <Users className="w-7 h-7 text-teal-600" />
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 rounded-2xl bg-teal-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <Users className="w-6 h-6 text-teal-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Join Communities</h3>
-                  <p className="text-gray-500 leading-relaxed">Engage in peer-to-peer learning, share resources, and grow together.</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Join Communities</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">Engage in peer-to-peer learning, share resources, and grow together.</p>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/posts" className="group">
+              <Card className="h-full border-0 shadow-lg shadow-purple-100 hover:shadow-xl hover:shadow-purple-200/50 transition-all duration-300 hover:-translate-y-2 bg-gradient-to-br from-white to-purple-50/50">
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <MessageSquare className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Solving Hub</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">Ask questions, share knowledge, and solve problems with peers.</p>
                 </CardContent>
               </Card>
             </Link>
 
             <Link to="/library" className="group">
               <Card className="h-full border-0 shadow-lg shadow-blue-100 hover:shadow-xl hover:shadow-blue-200/50 transition-all duration-300 hover:-translate-y-2 bg-gradient-to-br from-white to-blue-50/50">
-                <CardContent className="p-8">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <BookOpen className="w-7 h-7 text-blue-600" />
+                <CardContent className="p-6">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <BookOpen className="w-6 h-6 text-blue-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Resource Library</h3>
-                  <p className="text-gray-500 leading-relaxed">Access a vast collection of study materials, PDFs, and roadmaps.</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Resource Library</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">Access a vast collection of study materials, PDFs, and roadmaps.</p>
                 </CardContent>
               </Card>
             </Link>
@@ -292,6 +314,123 @@ export default function Home() {
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* SOLVING HUB & LIBRARY SECTION (Merged Layout) */}
+      <section className="py-24 px-4 md:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col gap-24">
+
+            {/* SOLVING HUB */}
+            <div>
+              <div className="flex items-end justify-between mb-8">
+                <div>
+                  <p className="text-purple-600 font-bold tracking-wide uppercase mb-2 text-sm">Problem Solving</p>
+                  <h2 className="text-3xl font-extrabold text-gray-900">Latest Discussions</h2>
+                </div>
+                <Button asChild variant="ghost" className="text-purple-700 hover:bg-purple-50 group">
+                  <Link to="/posts">
+                    View All <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </Button>
+              </div>
+
+              {loading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />)}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {solvingHubPosts.slice(0, 3).map(post => (
+                    <Link key={post._id} to={`/posts/${post._id}`} className="block group">
+                      <div className="p-5 rounded-2xl border border-gray-100 bg-white hover:border-purple-200 hover:shadow-lg hover:shadow-purple-50 transition-all duration-300">
+                        <div className="flex gap-4">
+                          <div className="shrink-0 pt-1">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${post.status === 'solved' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                              {post.status === 'solved' ? <ShieldCheck className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-bold text-gray-900 mb-1 truncate group-hover:text-purple-700 transition-colors">{post.title}</h3>
+                            <p className="text-sm text-gray-500 line-clamp-1 mb-3">{post.description}</p>
+                            <div className="flex items-center gap-4 text-xs font-medium text-gray-400">
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3 h-3" /> {post.author?.name || 'Anonymous'}
+                              </span>
+                              <span className="w-1 h-1 rounded-full bg-gray-300" />
+                              <span>{post.commentCount || 0} answers</span>
+                              {post.subject && (
+                                <Badge variant="secondary" className="ml-auto bg-purple-50 text-purple-700 border-0">{post.subject}</Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                  {solvingHubPosts.length === 0 && (
+                    <div className="text-center py-10 text-gray-500 border-2 border-dashed border-gray-100 rounded-xl">No discussions yet.</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* LIBRARY */}
+            <div>
+              <div className="flex items-end justify-between mb-8">
+                <div>
+                  <p className="text-blue-600 font-bold tracking-wide uppercase mb-2 text-sm">Study Resources</p>
+                  <h2 className="text-3xl font-extrabold text-gray-900">Popular Books</h2>
+                </div>
+                <Button asChild variant="ghost" className="text-blue-700 hover:bg-blue-50 group">
+                  <Link to="/library">
+                    Browse Library <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </Button>
+              </div>
+
+              {loading ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4].map(i => <div key={i} className="h-64 bg-gray-100 rounded-xl animate-pulse" />)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {libraryBooks.slice(0, 4).map(book => (
+                    <Link key={book._id} to={`/library/${book._id}`} className="group block h-full">
+                      <div className="bg-gray-50 rounded-2xl p-4 hover:bg-blue-50/50 hover:shadow-md transition-all h-full border border-transparent hover:border-blue-100">
+                        <div className="aspect-[3/4] rounded-xl overflow-hidden mb-4 shadow-sm relative group-hover:shadow-lg transition-shadow bg-white">
+                          <img
+                            src={book.coverImage ? (book.coverImage.startsWith("http") ? book.coverImage : `${BASE_URL}${book.coverImage}`) : "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=500&auto=format&fit=crop"}
+                            alt={book.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=500&auto=format&fit=crop"; }}
+                          />
+                          {book.pageCount && (
+                            <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded backdrop-blur-sm">
+                              {book.pageCount} Pages
+                            </div>
+                          )}
+                        </div>
+                        <h3 className="font-bold text-gray-900 line-clamp-1 mb-1 group-hover:text-blue-600 transition-colors">{book.title}</h3>
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>PDF</span>
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            {book.rating || "4.5"}
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                  {libraryBooks.length === 0 && (
+                    <div className="col-span-2 text-center py-10 text-gray-500 border-2 border-dashed border-gray-100 rounded-xl">No books found.</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+          </div>
         </div>
       </section>
 

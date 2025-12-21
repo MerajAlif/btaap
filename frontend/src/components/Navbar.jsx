@@ -317,7 +317,14 @@ export default function Navbar() {
 
         {/* Mobile Menu */}
         <div className="md:hidden flex items-center gap-2">
-          {user && <NotificationBell />}
+          {user && (
+            <>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/chat")} title="Messages">
+                <MessageSquare className="h-5 w-5 text-gray-600" />
+              </Button>
+              <NotificationBell />
+            </>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
