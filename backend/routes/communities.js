@@ -163,7 +163,7 @@ router.patch(
 router.get(
   "/mentor/my-communities",
   protect,
-  authorize("mentor"),
+  // Removed authorize("mentor") so student creators can also see requests
   async (req, res) => {
     try {
       const communities = await Community.find({ mentor: req.user._id }).sort(
@@ -480,7 +480,7 @@ router.put(
 router.get(
   "/:id/pending-requests",
   protect,
-  authorize("mentor"),
+  // Removed authorize("mentor") so student creators can also see requests
   async (req, res) => {
     try {
       const community = await Community.findById(req.params.id);
@@ -516,7 +516,7 @@ router.get(
 router.put(
   "/:communityId/requests/:requestId",
   protect,
-  authorize("mentor"),
+  // Removed authorize("mentor") so student creators can also see requests
   async (req, res) => {
     try {
       const { action, rejectionReason } = req.body;
@@ -822,7 +822,7 @@ router.delete("/:id/leave", protect, authorize("student"), async (req, res) => {
 router.delete(
   "/:id/members/:studentId",
   protect,
-  authorize("mentor"),
+  // Removed authorize("mentor") so student creators can also see requests
   async (req, res) => {
     try {
       const community = await Community.findById(req.params.id);

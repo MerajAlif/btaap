@@ -229,7 +229,12 @@ export default function Home() {
 
                     <div className="px-6 pb-6 -mt-12 text-center">
                       <Avatar className="w-24 h-24 border-4 border-white shadow-md mx-auto mb-4">
-                        <AvatarImage src={mentor.profile?.avatar} alt={mentor.name} className="object-cover" />
+                        <AvatarImage
+                          src={mentor.profile?.avatar || "/default-avatar.png"}
+                          alt={mentor.name}
+                          className="object-cover"
+                          onError={(e) => { e.target.src = "/default-avatar.png"; }}
+                        />
                         <AvatarFallback className="bg-emerald-100 text-emerald-700 text-2xl font-bold">{mentor.name?.charAt(0)}</AvatarFallback>
                       </Avatar>
 
@@ -279,10 +284,13 @@ export default function Home() {
                     <div className="relative h-48 overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
                       <img
-                        src={community.coverImage?.startsWith("http") ? community.coverImage : `${BASE_URL}${community.coverImage}`}
+                        src={community.coverImage
+                          ? (community.coverImage.startsWith("http") ? community.coverImage : `${BASE_URL}${community.coverImage}`)
+                          : "/default-community.png"
+                        }
                         alt={community.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&auto=format&fit=crop"; }}
+                        onError={(e) => { e.target.src = "/default-community.png"; }}
                       />
                       <div className="absolute bottom-4 left-4 right-4 z-20">
                         <h3 className="text-xl font-bold text-white mb-1 line-clamp-1">{community.name}</h3>
@@ -299,7 +307,10 @@ export default function Home() {
                       <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                         <div className="flex items-center gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={community.mentor?.profile?.avatar} />
+                            <AvatarImage
+                              src={community.mentor?.profile?.avatar || "/default-avatar.png"}
+                              onError={(e) => { e.target.src = "/default-avatar.png"; }}
+                            />
                             <AvatarFallback>{community.mentor?.name?.[0] || 'C'}</AvatarFallback>
                           </Avatar>
                           <span className="text-sm font-medium text-gray-700 truncate max-w-[100px]">{community.mentor?.name || 'Admin'}</span>

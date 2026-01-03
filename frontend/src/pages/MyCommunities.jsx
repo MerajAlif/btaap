@@ -1,58 +1,76 @@
-// src/pages/MyCommunities.jsx
+// src/pages/MyCommunities.jsx - Redesigned
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getMyMemberships, leaveCommunity } from "@/lib/communityApi";
-// import useAuth from "@/hooks/useAuth";
 import {
   Users,
   Calendar,
   LogOut,
   Search,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  BookOpen,
+  Crown,
+  GraduationCap
 } from "lucide-react";
-import { BASE_URL } from "@/lib/api";
+import { BASE_URL, api } from "@/lib/api";
+import useAuth from "@/hooks/useAuth";
 
 export default function MyCommunities() {
-  //   const { user } = useAuth();
-  const [memberships, setMemberships] = useState([]);
+  const { user } = useAuth();
+  const [communities, setCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [leavingId, setLeavingId] = useState(null);
-  const [error, setError] = useState("");
 
   useEffect(() => {
-    loadMemberships();
-  }, []);
+    loadMyCommunities();
+  }, [user]);
 
-  const loadMemberships = async () => {
+  const loadMyCommunities = async () => {
     setLoading(true);
-    setError("");
     try {
+      // 1. Fetch joined communities (Memberships)
       const data = await getMyMemberships();
-      setMemberships(data.memberships || []);
+      const joined = data.memberships?.map(m => ({ ...m.community, isJoined: true, joinedAt: m.joinedAt })) || [];
+
+      // 2. Fetch owned communities (Mentored)
+      let owned = [];
+      if (user?.role === "mentor") {
+        const token = localStorage.getItem("token");
+        const ownedRes = await fetch(`${BASE_URL}/api/communities?mentor=${user._id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const ownedData = await ownedRes.json();
+        owned = ownedData.communities?.map(c => ({ ...c, isOwned: true })) || [];
+      }
+
+      // 3. Merge and deduplicate
+      const all = [...owned];
+      joined.forEach(j => {
+        if (!all.find(c => c._id === j._id)) {
+          all.push(j);
+        }
+      });
+
+      setCommunities(all);
     } catch (err) {
-      setError(err.message || "Failed to load communities");
+      console.error("Failed to load communities:", err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleLeave = async (communityId, communityName) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to leave "${communityName}"? You'll need to rejoin (and pay again if applicable) to access it.`
-    );
-
-    if (!confirmed) return;
+    if (!window.confirm(`Leave "${communityName}"? You'll need to rejoin to access it.`)) return;
 
     setLeavingId(communityId);
     try {
       await leaveCommunity(communityId);
-      setMemberships(prev => prev.filter(m => m.community._id !== communityId));
+      setCommunities(prev => prev.filter(c => c._id !== communityId || c.isOwned)); // Keep if owned
     } catch (err) {
       alert(err.message || "Failed to leave community");
     } finally {
@@ -62,156 +80,111 @@ export default function MyCommunities() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="min-h-screen bg-gray-50 pb-20 pt-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-3 mb-8">
+          <BookOpen className="w-8 h-8 text-emerald-600" />
           <div>
-            <h1 className="text-4xl font-bold text-purple-900 flex items-center gap-3">
-              <Sparkles className="w-10 h-10" />
-              My Communities
-            </h1>
-            <p className="text-purple-700 mt-2">
-              Communities you've joined
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900">My Communities</h1>
+            <p className="text-gray-600 mt-1">Communities you manage or joined</p>
           </div>
-
-          <Button asChild className="bg-purple-600 hover:bg-purple-700">
-            <Link to="/communities">
-              <Search className="w-4 h-4 mr-2" />
-              Browse More
-            </Link>
-          </Button>
         </div>
 
-        {/* Error */}
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Communities List */}
-        {memberships.length === 0 ? (
-          <Card className="border-purple-200">
-            <CardContent className="py-16 text-center space-y-4">
-              <Users className="w-16 h-16 text-purple-300 mx-auto" />
-              <div>
-                <h3 className="text-xl font-semibold text-purple-900 mb-2">
-                  No communities yet
-                </h3>
-                <p className="text-purple-700 mb-4">
-                  Join a community to start learning with mentors
-                </p>
-                <Button asChild className="bg-purple-600 hover:bg-purple-700">
-                  <Link to="/communities">Explore Communities</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {communities.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-200">
+            <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900">No communities found</h3>
+            <p className="text-gray-500 mb-6">Join a community to start learning</p>
+            <Button asChild className="bg-emerald-600 hover:bg-emerald-700 rounded-full">
+              <Link to="/communities">Explore Communities</Link>
+            </Button>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {memberships.map((membership) => {
-              const community = membership.community;
-              const isLeaving = leavingId === community._id;
-
-              return (
-                <Card
-                  key={membership._id}
-                  className="group border-purple-200 hover:shadow-xl hover:shadow-purple-200/50 transition-all duration-300 overflow-hidden bg-white"
-                >
-                  {/* Cover Image */}
-                  <Link to={`/communities/${community._id}`}>
-                    <div className="relative h-40 bg-gradient-to-br from-purple-400 to-indigo-500 overflow-hidden">
-                      {community.coverImage ? (
-                        <img
-                          src={
-                            community.coverImage.startsWith("http")
-                              ? community.coverImage
-                              : `${BASE_URL}${community.coverImage}`
-                          }
-                          alt={community.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-white">
-                          <Users className="w-16 h-16 opacity-50" />
-                        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {communities.map((community) => (
+              <div key={community._id} className="group relative bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-200">
+                {/* Cover Image */}
+                <Link to={`/communities/${community._id}`}>
+                  <div className="h-40 bg-gradient-to-r from-emerald-500 to-teal-500 relative overflow-hidden">
+                    {community.coverImage && (
+                      <img
+                        src={community.coverImage.startsWith("http") ? community.coverImage : `${BASE_URL}${community.coverImage}`}
+                        alt={community.name}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <div className="absolute top-3 right-3 flex gap-2">
+                      {/* Distinguish Student/Mentor community implicitly by ownership or if they are just a member */}
+                      {/* The user said there are two types: student community and mentor community.
+                           Currently the code checks isOwned or isJoined.
+                           Let's trust the existing logic for badges for now, but ensure the UI looks good.
+                       */}
+                      {community.isOwned && (
+                        <Badge className="bg-amber-500 hover:bg-amber-600 text-white">Owner</Badge>
                       )}
-
-                      {/* Member Badge */}
-                      <Badge className="absolute top-3 right-3 bg-green-500 text-white">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Member
-                      </Badge>
+                      {community.isJoined && !community.isOwned && (
+                        <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white">Member</Badge>
+                      )}
                     </div>
+                  </div>
+                </Link>
+
+                <div className="p-5">
+                  <Link to={`/communities/${community._id}`}>
+                    <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-emerald-600 transition-colors">
+                      {community.name}
+                    </h3>
                   </Link>
 
-                  <CardContent className="p-4 space-y-3">
-                    {/* Community Name */}
-                    <Link to={`/communities/${community._id}`}>
-                      <h3 className="text-lg font-bold text-purple-900 line-clamp-1 hover:text-purple-600 transition-colors">
-                        {community.name}
-                      </h3>
-                    </Link>
-
-                    {/* Mentor */}
-                    <div className="flex items-center gap-2">
-                      <Avatar className="w-6 h-6">
-                        <AvatarImage src={community.mentor?.profile?.avatar} />
-                        <AvatarFallback className="bg-purple-100 text-purple-700 text-xs">
-                          {community.mentor?.name?.charAt(0) || "M"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm text-gray-600 truncate">
-                        {community.mentor?.name}
+                  {/* Show Mentor Name / Student Community Label */}
+                  <div className="flex items-center gap-2 mb-4">
+                    {community.creatorRole === 'mentor' ? (
+                      <>
+                        <Avatar className="w-5 h-5">
+                          <AvatarImage src={community.mentor?.profile?.avatar} />
+                          <AvatarFallback className="text-[10px]">{community.mentor?.name?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs text-gray-500 truncate">{community.mentor?.name}</span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <Users className="w-3 h-3" /> Student Community
                       </span>
-                    </div>
+                    )}
 
-                    {/* Join Date */}
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Calendar className="w-4 h-4" />
-                      <span>
-                        Joined {new Date(membership.joinedAt).toLocaleDateString()}
-                      </span>
-                    </div>
+                  </div>
 
-                    {/* Actions */}
-                    <div className="flex gap-2 pt-2">
+                  <div className="flex items-center justify-between mt-4 border-t pt-4 border-gray-100">
+                    <Button asChild size="sm" className="bg-gray-900 text-white hover:bg-emerald-600 transition-colors rounded-xl px-6 h-9">
+                      <Link to={`/communities/${community._id}`}>access</Link>
+                    </Button>
+
+                    {!community.isOwned && (
                       <Button
-                        asChild
-                        className="flex-1 bg-purple-600 hover:bg-purple-700"
-                        size="sm"
-                      >
-                        <Link to={`/communities/${community._id}`}>
-                          View
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleLeave(community._id, community.name)}
-                        disabled={isLeaving}
-                        className="border-red-300 text-red-600 hover:bg-red-50"
+                        disabled={leavingId === community._id}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 h-9 px-3 rounded-xl"
                       >
-                        {isLeaving ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600" />
+                        {leavingId === community._id ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-500" />
                         ) : (
                           <LogOut className="w-4 h-4" />
                         )}
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

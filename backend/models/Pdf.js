@@ -13,6 +13,7 @@ const PdfSchema = new mongoose.Schema(
     size: Number,
     downloads: { type: Number, default: 0 },
     favoritesCount: { type: Number, default: 0 },
+    creditCost: { type: Number, default: 5, min: 0 },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }

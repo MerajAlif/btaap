@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useAuth from "@/hooks/useAuth";
 import { api } from "@/lib/api";
@@ -17,7 +16,9 @@ import {
     Check,
     X,
     Search,
-    AlertCircle
+    AlertCircle,
+    Crown,
+    GraduationCap
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -28,8 +29,10 @@ export default function Chat() {
     // Connections state
     const [connections, setConnections] = useState([]);
     const [requests, setRequests] = useState([]);
+    const [allUsers, setAllUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
+    const [userSearchQuery, setUserSearchQuery] = useState("");
 
     // Chat state
     const [selectedConnection, setSelectedConnection] = useState(null);
@@ -42,16 +45,14 @@ export default function Chat() {
 
     // Load connections and requests on mount
     useEffect(() => {
-        console.log("[Chat] Component mounted, loading connections...");
         loadConnections();
         loadRequests();
+        loadAllUsers();
     }, []);
 
     // Initialize socket connection
     useEffect(() => {
-        console.log("[Chat] Socket effect triggered, user:", user);
         if (user) {
-            console.log("[Chat] Initializing socket connection...");
             const newSocket = io(import.meta.env.VITE_API_URL || "http://localhost:5000", {
                 reconnection: true,
                 reconnectionDelay: 1000,
@@ -60,23 +61,16 @@ export default function Chat() {
             });
 
             newSocket.on("connect", () => {
-                console.log("[Chat] ✅ Socket connected:", newSocket.id);
                 newSocket.emit("user_online", user._id);
             });
 
-            newSocket.on("connect_error", (error) => {
-                console.error("[Chat] ❌ Socket connection error:", error);
-            });
-
             newSocket.on("receive_direct_message", (message) => {
-                console.log("[Chat] 📨 Received message:", message);
                 setMessages((prev) => [...prev, message]);
             });
 
             setSocket(newSocket);
 
             return () => {
-                console.log("[Chat] Cleaning up socket connection");
                 newSocket.emit("user_offline", user._id);
                 newSocket.disconnect();
             };
@@ -89,30 +83,57 @@ export default function Chat() {
     }, [messages]);
 
     const loadConnections = async () => {
-        console.log("[Chat] loadConnections() called");
-        setLoading(true);
         try {
-            console.log("[Chat] Fetching connections from API...");
             const data = await api("/api/connections");
-            console.log("[Chat] ✅ Connections loaded:", data);
             setConnections(data);
         } catch (error) {
-            console.error("[Chat] ❌ Failed to load connections:", error);
-        } finally {
-            setLoading(false);
-            console.log("[Chat] Loading state set to false");
+            console.error("Failed to load connections:", error);
         }
     };
 
     const loadRequests = async () => {
-        console.log("[Chat] loadRequests() called");
         try {
-            console.log("[Chat] Fetching requests from API...");
             const data = await api("/api/connections/requests");
-            console.log("[Chat] ✅ Requests loaded:", data);
             setRequests(data);
         } catch (error) {
-            console.error("[Chat] ❌ Failed to load requests:", error);
+            console.error("Failed to load requests:", error);
+        }
+    };
+
+    const loadAllUsers = async () => {
+        setLoading(true);
+        try {
+            // Fetch ALL mentors and students
+            const [mentorsRes, studentsRes] = await Promise.all([
+                api("/api/profiles/mentors"),
+                api("/api/profiles/students")
+            ]);
+
+            const mentors = mentorsRes.mentors || [];
+            const students = studentsRes.students || [];
+
+            // Filter out current user and existing connections
+            const connectionIds = connections.map(c => c._id);
+            const allUsersList = [...mentors, ...students].filter(
+                u => u._id !== user._id && !connectionIds.includes(u._id)
+            );
+
+            setAllUsers(allUsersList);
+        } catch (error) {
+            console.error("Failed to load users:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSendConnectionRequest = async (userId) => {
+        try {
+            await api(`/api/connections/send/${userId}`, { method: "POST" });
+            setAllUsers(prev => prev.filter(u => u._id !== userId));
+            alert("Connection request sent!");
+        } catch (error) {
+            console.error("Failed to send connection request:", error);
+            alert(error.message || "Failed to send request");
         }
     };
 
@@ -121,6 +142,7 @@ export default function Chat() {
             await api(`/api/connections/accept/${userId}`, { method: "POST" });
             loadConnections();
             loadRequests();
+            loadAllUsers();
         } catch (error) {
             console.error("Failed to accept request:", error);
         }
@@ -136,30 +158,22 @@ export default function Chat() {
     };
 
     const handleSelectConnection = async (connection) => {
-        console.log("[Chat] Selecting connection:", connection._id);
         setSelectedConnection(connection);
         setMessagesLoading(true);
 
         try {
-            // Get or create conversation
-            console.log("[Chat] Fetching conversation...");
             const convData = await api(`/api/messages/conversation/${connection._id}`);
-            console.log("[Chat] Conversation:", convData);
 
             if (convData.success && convData.conversation) {
                 setSelectedConversation(convData.conversation);
-
-                // Load message history
-                console.log("[Chat] Loading messages for conversation:", convData.conversation._id);
                 const msgData = await api(`/api/messages/${convData.conversation._id}`);
-                console.log("[Chat] Messages loaded:", msgData);
 
                 if (msgData.success) {
                     setMessages(msgData.messages || []);
                 }
             }
         } catch (error) {
-            console.error("[Chat] Error loading conversation:", error);
+            console.error("Error loading conversation:", error);
             if (error.message?.includes("403") || error.message?.includes("not connected")) {
                 setMessages([]);
                 alert("You are no longer connected with this user");
@@ -186,10 +200,7 @@ export default function Chat() {
             timestamp: new Date().toISOString(),
         };
 
-        console.log("[Chat] Sending message:", messageData);
         socket.emit("send_direct_message", messageData);
-
-        // Optimistically add to UI
         setMessages((prev) => [...prev, messageData]);
         setNewMessage("");
     };
@@ -198,8 +209,14 @@ export default function Chat() {
         conn.name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const filteredUsers = allUsers.filter((u) =>
+        u.name?.toLowerCase().includes(userSearchQuery.toLowerCase())
+    );
+
     const mentorConnections = filteredConnections.filter((c) => c.role === "mentor");
     const studentConnections = filteredConnections.filter((c) => c.role === "student");
+    const mentorUsers = filteredUsers.filter(u => u.role === "mentor");
+    const studentUsers = filteredUsers.filter(u => u.role === "student");
 
     if (loading) {
         return (
@@ -210,291 +227,359 @@ export default function Chat() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-6">
-            <div className="max-w-7xl mx-auto">
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                        <MessageSquare className="w-8 h-8 text-purple-600" />
-                        Messages
-                    </h1>
-                    <p className="text-gray-600 mt-1">Chat with your connections</p>
+        <div className="flex h-screen bg-gray-50">
+            {/* SIDEBAR */}
+            <aside className="w-80 bg-white border-r border-gray-200 flex flex-col">
+                {/* Sidebar Header */}
+                <div className="p-6 border-b border-gray-200">
+                    <div className="flex items-center gap-3 mb-2">
+                        <MessageSquare className="w-6 h-6 text-purple-600" />
+                        <h1 className="text-xl font-bold text-gray-900">Messages</h1>
+                    </div>
+                    <p className="text-sm text-gray-600">Chat with your connections</p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Sidebar - Connections List */}
-                    <div className="lg:col-span-1">
-                        <Tabs defaultValue="connections" className="w-full">
-                            <TabsList className="grid w-full grid-cols-2">
-                                <TabsTrigger value="connections">
-                                    Connections ({connections.length})
-                                </TabsTrigger>
-                                <TabsTrigger value="requests">
-                                    Requests ({requests.length})
-                                </TabsTrigger>
-                            </TabsList>
+                {/* Tabs */}
+                <Tabs defaultValue="connections" className="flex-1 flex flex-col">
+                    <TabsList className="grid w-full grid-cols-3 px-4 pt-4">
+                        <TabsTrigger value="connections" className="text-xs">
+                            <Users className="w-4 h-4 mr-1" />
+                            Connections
+                        </TabsTrigger>
+                        <TabsTrigger value="requests" className="text-xs">
+                            <UserPlus className="w-4 h-4 mr-1" />
+                            Requests
+                        </TabsTrigger>
+                        <TabsTrigger value="find" className="text-xs">
+                            <Search className="w-4 h-4 mr-1" />
+                            Find
+                        </TabsTrigger>
+                    </TabsList>
 
-                            <TabsContent value="connections" className="mt-4 space-y-4">
-                                {/* Search */}
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                    <Input
-                                        placeholder="Search connections..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="pl-10"
-                                    />
-                                </div>
+                    {/* Connections Tab */}
+                    <TabsContent value="connections" className="flex-1 overflow-y-auto p-4 space-y-4 mt-0">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Input
+                                placeholder="Search connections..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
 
-                                {connections.length === 0 ? (
-                                    <Card>
-                                        <CardContent className="p-8 text-center text-gray-500">
-                                            <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                                            <p>No connections yet</p>
-                                            <p className="text-sm mt-2">
-                                                Connect with mentors and students to start chatting
-                                            </p>
-                                        </CardContent>
-                                    </Card>
-                                ) : (
-                                    <>
-                                        {/* Mentors */}
-                                        {mentorConnections.length > 0 && (
-                                            <div>
-                                                <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                                    <UserPlus className="w-4 h-4" />
-                                                    Mentors ({mentorConnections.length})
-                                                </h3>
-                                                <div className="space-y-2">
-                                                    {mentorConnections.map((connection) => (
-                                                        <Card
-                                                            key={connection._id}
-                                                            className={`cursor-pointer transition-all hover:shadow-md ${selectedConnection?._id === connection._id
-                                                                ? "ring-2 ring-purple-500 bg-purple-50"
-                                                                : ""
-                                                                }`}
-                                                            onClick={() => handleSelectConnection(connection)}
-                                                        >
-                                                            <CardContent className="p-4 flex items-center gap-3">
-                                                                <Avatar>
-                                                                    <AvatarImage src={connection.profile?.avatar} />
-                                                                    <AvatarFallback>{connection.name?.[0]}</AvatarFallback>
-                                                                </Avatar>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="font-medium text-sm truncate">
-                                                                        {connection.name}
-                                                                    </p>
-                                                                    <p className="text-xs text-gray-500 truncate">
-                                                                        {connection.profile?.expertise?.[0] || "Mentor"}
-                                                                    </p>
-                                                                </div>
-                                                                <Badge variant="secondary" className="text-xs">
-                                                                    Mentor
-                                                                </Badge>
-                                                            </CardContent>
-                                                        </Card>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Students */}
-                                        {studentConnections.length > 0 && (
-                                            <div className="mt-4">
-                                                <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                                    <Users className="w-4 h-4" />
-                                                    Students ({studentConnections.length})
-                                                </h3>
-                                                <div className="space-y-2">
-                                                    {studentConnections.map((connection) => (
-                                                        <Card
-                                                            key={connection._id}
-                                                            className={`cursor-pointer transition-all hover:shadow-md ${selectedConnection?._id === connection._id
-                                                                ? "ring-2 ring-purple-500 bg-purple-50"
-                                                                : ""
-                                                                }`}
-                                                            onClick={() => handleSelectConnection(connection)}
-                                                        >
-                                                            <CardContent className="p-4 flex items-center gap-3">
-                                                                <Avatar>
-                                                                    <AvatarImage src={connection.profile?.avatar} />
-                                                                    <AvatarFallback>{connection.name?.[0]}</AvatarFallback>
-                                                                </Avatar>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="font-medium text-sm truncate">
-                                                                        {connection.name}
-                                                                    </p>
-                                                                    <p className="text-xs text-gray-500">Student</p>
-                                                                </div>
-                                                            </CardContent>
-                                                        </Card>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </TabsContent>
-
-                            <TabsContent value="requests" className="mt-4 space-y-4">
-                                {requests.length === 0 ? (
-                                    <Card>
-                                        <CardContent className="p-8 text-center text-gray-500">
-                                            <UserPlus className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                                            <p>No pending requests</p>
-                                        </CardContent>
-                                    </Card>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {requests.map((request) => (
-                                            <Card key={request._id}>
-                                                <CardContent className="p-4">
-                                                    <div className="flex items-center gap-3 mb-3">
-                                                        <Avatar>
-                                                            <AvatarImage src={request.from?.profile?.avatar} />
-                                                            <AvatarFallback>{request.from?.name?.[0]}</AvatarFallback>
+                        {connections.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">
+                                <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                <p className="text-sm">No connections yet</p>
+                            </div>
+                        ) : (
+                            <>
+                                {mentorConnections.length > 0 && (
+                                    <div>
+                                        <h3 className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                            <Crown className="w-3 h-3 text-emerald-600" />
+                                            Mentors ({mentorConnections.length})
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {mentorConnections.map((connection) => (
+                                                <div
+                                                    key={connection._id}
+                                                    className={`p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${selectedConnection?._id === connection._id ? "bg-purple-50 border border-purple-200" : "border border-transparent"
+                                                        }`}
+                                                    onClick={() => handleSelectConnection(connection)}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="w-10 h-10">
+                                                            <AvatarImage src={connection.profile?.avatar} />
+                                                            <AvatarFallback>{connection.name?.[0]}</AvatarFallback>
                                                         </Avatar>
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="font-medium text-sm truncate">
-                                                                {request.from?.name}
-                                                            </p>
-                                                            <p className="text-xs text-gray-500 capitalize">
-                                                                {request.from?.role}
+                                                            <p className="font-medium text-sm truncate">{connection.name}</p>
+                                                            <p className="text-xs text-gray-500 truncate">
+                                                                {connection.profile?.expertise?.[0] || "Mentor"}
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            size="sm"
-                                                            className="flex-1 bg-green-600 hover:bg-green-700"
-                                                            onClick={() => handleAcceptRequest(request.from._id)}
-                                                        >
-                                                            <Check className="w-4 h-4 mr-1" />
-                                                            Accept
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="flex-1"
-                                                            onClick={() => handleRejectRequest(request.from._id)}
-                                                        >
-                                                            <X className="w-4 h-4 mr-1" />
-                                                            Reject
-                                                        </Button>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
-                            </TabsContent>
-                        </Tabs>
-                    </div>
 
-                    {/* Main Chat Area */}
-                    <div className="lg:col-span-2">
-                        {!selectedConnection ? (
-                            <Card className="h-[600px] flex items-center justify-center">
-                                <CardContent className="text-center text-gray-500">
-                                    <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                                    <p className="text-lg font-medium">Select a connection to start chatting</p>
-                                    <p className="text-sm mt-2">
-                                        Choose from your mentors or students on the left
-                                    </p>
-                                </CardContent>
-                            </Card>
+                                {studentConnections.length > 0 && (
+                                    <div>
+                                        <h3 className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                            <GraduationCap className="w-3 h-3 text-blue-600" />
+                                            Students ({studentConnections.length})
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {studentConnections.map((connection) => (
+                                                <div
+                                                    key={connection._id}
+                                                    className={`p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${selectedConnection?._id === connection._id ? "bg-purple-50 border border-purple-200" : "border border-transparent"
+                                                        }`}
+                                                    onClick={() => handleSelectConnection(connection)}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="w-10 h-10">
+                                                            <AvatarImage src={connection.profile?.avatar} />
+                                                            <AvatarFallback>{connection.name?.[0]}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="font-medium text-sm truncate">{connection.name}</p>
+                                                            <p className="text-xs text-gray-500">Student</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </TabsContent>
+
+                    {/* Requests Tab */}
+                    <TabsContent value="requests" className="flex-1 overflow-y-auto p-4 space-y-3 mt-0">
+                        {requests.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">
+                                <UserPlus className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                <p className="text-sm">No pending requests</p>
+                            </div>
                         ) : (
-                            <Card className="h-[600px] flex flex-col">
-                                {/* Chat Header */}
-                                <CardHeader className="border-b">
-                                    <div className="flex items-center gap-3">
-                                        <Avatar
-                                            className="cursor-pointer"
-                                            onClick={() => navigate(`/profile/${selectedConnection._id}`)}
-                                        >
-                                            <AvatarImage src={selectedConnection.profile?.avatar} />
-                                            <AvatarFallback>{selectedConnection.name?.[0]}</AvatarFallback>
+                            requests.map((request) => (
+                                <Card key={request._id}>
+                                    <CardContent className="p-3">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <Avatar>
+                                                <AvatarImage src={request.from?.profile?.avatar} />
+                                                <AvatarFallback>{request.from?.name?.[0]}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm truncate">{request.from?.name}</p>
+                                                <p className="text-xs text-gray-500 capitalize">{request.from?.role}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                className="flex-1 bg-green-600 hover:bg-green-700 h-8"
+                                                onClick={() => handleAcceptRequest(request.from._id)}
+                                            >
+                                                <Check className="w-3 h-3 mr-1" />
+                                                Accept
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="flex-1 h-8"
+                                                onClick={() => handleRejectRequest(request.from._id)}
+                                            >
+                                                <X className="w-3 h-3 mr-1" />
+                                                Reject
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        )}
+                    </TabsContent>
+
+                    {/* Find Tab - Show ALL Users */}
+                    <TabsContent value="find" className="flex-1 overflow-y-auto p-4 space-y-4 mt-0">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Input
+                                placeholder="Search users..."
+                                value={userSearchQuery}
+                                onChange={(e) => setUserSearchQuery(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+
+                        {/* Mentors */}
+                        {mentorUsers.length > 0 && (
+                            <div>
+                                <h3 className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                    <Crown className="w-3 h-3 text-emerald-600" />
+                                    Mentors ({mentorUsers.length})
+                                </h3>
+                                <div className="space-y-2">
+                                    {mentorUsers.map((mentor) => (
+                                        <Card key={mentor._id}>
+                                            <CardContent className="p-3">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <Avatar className="w-10 h-10">
+                                                        <AvatarImage src={mentor.profile?.avatar} />
+                                                        <AvatarFallback>{mentor.name?.[0]}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-medium text-sm truncate">{mentor.name}</p>
+                                                        <p className="text-xs text-gray-500 truncate">
+                                                            {mentor.profile?.expertise?.[0] || "Mentor"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    size="sm"
+                                                    className="w-full bg-purple-600 hover:bg-purple-700 h-8"
+                                                    onClick={() => handleSendConnectionRequest(mentor._id)}
+                                                >
+                                                    <UserPlus className="w-3 h-3 mr-1" />
+                                                    Connect
+                                                </Button>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Students */}
+                        {studentUsers.length > 0 && (
+                            <div>
+                                <h3 className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                    <GraduationCap className="w-3 h-3 text-blue-600" />
+                                    Students ({studentUsers.length})
+                                </h3>
+                                <div className="space-y-2">
+                                    {studentUsers.map((student) => (
+                                        <Card key={student._id}>
+                                            <CardContent className="p-3">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <Avatar className="w-10 h-10">
+                                                        <AvatarImage src={student.profile?.avatar} />
+                                                        <AvatarFallback>{student.name?.[0]}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-medium text-sm truncate">{student.name}</p>
+                                                        <p className="text-xs text-gray-500">Student</p>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    size="sm"
+                                                    className="w-full bg-purple-600 hover:bg-purple-700 h-8"
+                                                    onClick={() => handleSendConnectionRequest(student._id)}
+                                                >
+                                                    <UserPlus className="w-3 h-3 mr-1" />
+                                                    Connect
+                                                </Button>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {filteredUsers.length === 0 && (
+                            <div className="text-center py-8 text-gray-500">
+                                <Search className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                <p className="text-sm">No users found</p>
+                            </div>
+                        )}
+                    </TabsContent>
+                </Tabs>
+            </aside>
+
+            {/* MAIN CHAT AREA */}
+            <main className="flex-1 flex flex-col">
+                {!selectedConnection ? (
+                    <div className="flex-1 flex items-center justify-center bg-white">
+                        <div className="text-center text-gray-500">
+                            <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                            <p className="text-lg font-medium">Select a connection to start chatting</p>
+                            <p className="text-sm mt-2">Choose from your mentors or students on the left</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex-1 flex flex-col bg-white">
+                        {/* Chat Header */}
+                        <div className="p-4 border-b border-gray-200">
+                            <div className="flex items-center gap-3">
+                                <Avatar
+                                    className="cursor-pointer w-10 h-10"
+                                    onClick={() => navigate(`/profile/${selectedConnection._id}`)}
+                                >
+                                    <AvatarImage src={selectedConnection.profile?.avatar} />
+                                    <AvatarFallback>{selectedConnection.name?.[0]}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                    <h2 className="font-semibold text-gray-900">{selectedConnection.name}</h2>
+                                    <p className="text-sm text-gray-500 capitalize">{selectedConnection.role}</p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigate(`/profile/${selectedConnection._id}`)}
+                                >
+                                    View Profile
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Messages */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+                            {messagesLoading ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" />
+                                </div>
+                            ) : messages.length === 0 ? (
+                                <div className="flex items-center justify-center h-full text-gray-400">
+                                    <div className="text-center">
+                                        <AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                        <p>No messages yet</p>
+                                        <p className="text-sm">Start the conversation!</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                messages.map((msg, idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`flex gap-3 ${msg.sender?.id === user?._id ? "flex-row-reverse" : ""}`}
+                                    >
+                                        <Avatar className="w-8 h-8">
+                                            <AvatarImage src={msg.sender?.avatar} />
+                                            <AvatarFallback>{msg.sender?.name?.[0]}</AvatarFallback>
                                         </Avatar>
-                                        <div className="flex-1">
-                                            <CardTitle className="text-lg">{selectedConnection.name}</CardTitle>
-                                            <p className="text-sm text-gray-500 capitalize">
-                                                {selectedConnection.role}
+                                        <div
+                                            className={`max-w-[70%] p-3 rounded-lg ${msg.sender?.id === user?._id
+                                                ? "bg-purple-600 text-white"
+                                                : "bg-white border"
+                                                }`}
+                                        >
+                                            <p className="text-sm">{msg.content}</p>
+                                            <p className="text-[10px] mt-1 opacity-70 text-right">
+                                                {new Date(msg.timestamp).toLocaleTimeString()}
                                             </p>
                                         </div>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => navigate(`/profile/${selectedConnection._id}`)}
-                                        >
-                                            View Profile
-                                        </Button>
                                     </div>
-                                </CardHeader>
+                                ))
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
 
-                                {/* Messages */}
-                                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-                                    {messagesLoading ? (
-                                        <div className="flex items-center justify-center h-full">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" />
-                                        </div>
-                                    ) : messages.length === 0 ? (
-                                        <div className="flex items-center justify-center h-full text-gray-400">
-                                            <div className="text-center">
-                                                <AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                                <p>No messages yet</p>
-                                                <p className="text-sm">Start the conversation!</p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        messages.map((msg, idx) => (
-                                            <div
-                                                key={idx}
-                                                className={`flex gap-3 ${msg.sender?.id === user?._id ? "flex-row-reverse" : ""
-                                                    }`}
-                                            >
-                                                <Avatar className="w-8 h-8">
-                                                    <AvatarImage src={msg.sender?.avatar} />
-                                                    <AvatarFallback>{msg.sender?.name?.[0]}</AvatarFallback>
-                                                </Avatar>
-                                                <div
-                                                    className={`max-w-[70%] p-3 rounded-lg ${msg.sender?.id === user?._id
-                                                        ? "bg-purple-600 text-white"
-                                                        : "bg-white border"
-                                                        }`}
-                                                >
-                                                    <p className="text-sm">{msg.content}</p>
-                                                    <p className="text-[10px] mt-1 opacity-70 text-right">
-                                                        {new Date(msg.timestamp).toLocaleTimeString()}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                    <div ref={chatEndRef} />
-                                </CardContent>
-
-                                {/* Message Input */}
-                                <div className="p-4 border-t bg-white">
-                                    <form onSubmit={sendMessage} className="flex gap-2">
-                                        <Input
-                                            value={newMessage}
-                                            onChange={(e) => setNewMessage(e.target.value)}
-                                            placeholder="Type a message..."
-                                            className="flex-1"
-                                        />
-                                        <Button
-                                            type="submit"
-                                            size="icon"
-                                            className="bg-purple-600 hover:bg-purple-700"
-                                        >
-                                            <Send className="w-4 h-4" />
-                                        </Button>
-                                    </form>
-                                </div>
-                            </Card>
-                        )}
+                        {/* Message Input */}
+                        <div className="p-4 border-t border-gray-200 bg-white">
+                            <form onSubmit={sendMessage} className="flex gap-2">
+                                <Input
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    placeholder="Type a message..."
+                                    className="flex-1"
+                                />
+                                <Button
+                                    type="submit"
+                                    size="icon"
+                                    className="bg-purple-600 hover:bg-purple-700"
+                                >
+                                    <Send className="w-4 h-4" />
+                                </Button>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            </div>
+                )}
+            </main>
         </div>
     );
 }

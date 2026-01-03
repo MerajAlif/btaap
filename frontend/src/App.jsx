@@ -8,6 +8,7 @@ import Login from "./components/auth/Login.jsx";
 import Register from "./components/auth/Register.jsx";
 import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import Layout from "./components/Layout";
 
 // Pages
 import Home from "@/pages/Home";
@@ -48,8 +49,7 @@ import "./index.css";
 function App() {
   return (
     <AuthProvider>
-      <Navbar />
-      <main className="container mx-auto">
+      <Layout>
         <Routes>
           {/* Main app pages */}
           <Route path="/" element={<Home />} />
@@ -114,8 +114,7 @@ function App() {
           </Route>
 
         </Routes>
-      </main>
-      <Footer />
+      </Layout>
     </AuthProvider>
   );
 }

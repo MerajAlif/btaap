@@ -73,9 +73,9 @@ router.get("/", async (req, res) => {
   try {
     const { search, sortBy = "createdAt", sortDir = "desc", userId } = req.query;
     const query = {};
-    
+
     if (userId) query.owner = userId;
-    
+
     if (search) {
       const searchRegex = new RegExp(search, "i");
       query.$or = [
@@ -144,6 +144,7 @@ router.post(
         rating: isNaN(Number(rating)) ? 0 : Math.max(0, Math.min(5, Number(rating))),
         tags: tagsArr,
         size: pdfFile.size,
+        creditCost: req.body.creditCost ? Number(req.body.creditCost) : 5,
         owner: req.user?._id,
       });
 
@@ -228,13 +229,13 @@ router.get("/:id", async (req, res) => {
           res.status(500).json({ error: "Failed to stream PDF" });
         try {
           file.destroy();
-        } catch {}
+        } catch { }
       });
 
       res.on("close", () => {
         try {
           file.destroy();
-        } catch {}
+        } catch { }
       });
 
       file.pipe(res);
@@ -252,13 +253,13 @@ router.get("/:id", async (req, res) => {
           res.status(500).json({ error: "Failed to stream PDF" });
         try {
           file.destroy();
-        } catch {}
+        } catch { }
       });
 
       res.on("close", () => {
         try {
           file.destroy();
-        } catch {}
+        } catch { }
       });
 
       file.pipe(res);
@@ -311,7 +312,7 @@ router.delete("/:id", protect, authorize("admin"), async (req, res) => {
       for (const pth of filePaths) {
         if (pth && fs.existsSync(pth)) fs.unlinkSync(pth);
       }
-    } catch {}
+    } catch { }
 
     res.json({ success: true });
   } catch (err) {
@@ -388,10 +389,11 @@ router.post("/:id/favorite", protect, async (req, res) => {
 
 router.post("/:id/download", protect, async (req, res) => {
   try {
-    const COST = 5;
     const pdf = await Pdf.findById(req.params.id);
     if (!pdf)
       return res.status(404).json({ success: false, error: "PDF not found" });
+
+    const COST = pdf.creditCost !== undefined ? pdf.creditCost : 5;
 
     // Deduct credits
     const remaining = await deductCredits(

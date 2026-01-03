@@ -52,6 +52,52 @@ router.post("/request/:userId", protect, async (req, res) => {
     }
 });
 
+// Alias route for /send/:userId (same as /request/:userId)
+router.post("/send/:userId", protect, async (req, res) => {
+    try {
+        const targetUserId = req.params.userId;
+        const requesterId = req.user.id;
+
+        if (targetUserId === requesterId) {
+            return res.status(400).json({ message: "You cannot connect with yourself" });
+        }
+
+        const targetUser = await User.findById(targetUserId);
+        const requester = await User.findById(requesterId);
+
+        if (!targetUser || !requester) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Check if already connected
+        if (requester.connections.includes(targetUserId)) {
+            return res.status(400).json({ message: "You are already connected" });
+        }
+
+        // Check if request already exists
+        const existingRequest = targetUser.connectionRequests.find(
+            (req) => req.from.toString() === requesterId && req.status === "pending"
+        );
+
+        if (existingRequest) {
+            return res.status(400).json({ message: "Connection request already sent" });
+        }
+
+        // Add request to target user
+        targetUser.connectionRequests.push({
+            from: requesterId,
+            status: "pending",
+        });
+
+        await targetUser.save();
+
+        res.status(200).json({ message: "Connection request sent successfully" });
+    } catch (error) {
+        console.error("Send request error:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
 // @route   POST /api/connections/accept/:userId
 // @desc    Accept a connection request
 // @access  Private

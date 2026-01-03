@@ -249,7 +249,12 @@ export default function Mentors() {
 
                                             <div className="px-6 pb-6 -mt-12 text-center flex flex-col flex-1">
                                                 <Avatar className="w-24 h-24 border-4 border-white shadow-md mx-auto mb-4 flex-shrink-0">
-                                                    <AvatarImage src={mentor.profile?.avatar} alt={mentor.name} className="object-cover" />
+                                                    <AvatarImage
+                                                        src={mentor.profile?.avatar || "/default-avatar.png"}
+                                                        alt={mentor.name}
+                                                        className="object-cover"
+                                                        onError={(e) => { e.target.src = "/default-avatar.png"; }}
+                                                    />
                                                     <AvatarFallback className="bg-emerald-100 text-emerald-700 text-2xl font-bold">{mentor.name?.charAt(0)}</AvatarFallback>
                                                 </Avatar>
 

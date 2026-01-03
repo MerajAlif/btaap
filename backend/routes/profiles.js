@@ -7,6 +7,62 @@ import { protect, optionalAuth } from "../middleware/auth.js";
 
 const router = express.Router();
 
+// ========== USER LISTS FOR SEARCH ==========
+
+// Get mentors list (for search/discovery)
+router.get("/mentors", async (req, res) => {
+  try {
+    const { search, limit = 20 } = req.query;
+
+    const query = {
+      role: "mentor",
+      approvalStatus: "approved"
+    };
+
+    // Add search filter if provided
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { "profile.expertise": { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const mentors = await User.find(query)
+      .select("name email profile role")
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, mentors });
+  } catch (error) {
+    console.error("Get mentors error:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+});
+
+// Get students list (for search/discovery)
+router.get("/students", async (req, res) => {
+  try {
+    const { search, limit = 20 } = req.query;
+
+    const query = { role: "student" };
+
+    // Add search filter if provided
+    if (search) {
+      query.name = { $regex: search, $options: "i" };
+    }
+
+    const students = await User.find(query)
+      .select("name email profile role")
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, students });
+  } catch (error) {
+    console.error("Get students error:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+});
+
 // ========== PUBLIC PROFILE VIEWS ==========
 
 // Get mentor public profile
@@ -102,9 +158,50 @@ router.get("/student/:id", optionalAuth, async (req, res) => {
       return res.status(404).json({ success: false, error: "Student not found" });
     }
 
+    // Get communities where student is a member
+    const memberCommunities = await Membership.find({
+      student: req.params.id,
+      status: "approved",
+    })
+      .populate({
+        path: "community",
+        select: "name description category coverImage statistics mentorSettings creatorRole",
+      })
+      .select("community");
+
+    const joinedCommunities = memberCommunities
+      .map((m) => m.community)
+      .filter((c) => c !== null); // Filter out null communities
+
+    // Get owned communities (student-created communities)
+    const ownedCommunities = await Community.find({
+      mentor: req.params.id,
+      isActive: true,
+    }).select("name description category coverImage statistics mentorSettings creatorRole");
+
+    // Mutual communities (if user is logged in)
+    let mutualCommunities = [];
+    if (req.user) {
+      // Get viewer's communities
+      const viewerMemberships = await Membership.find({
+        student: req.user.id,
+        status: "approved",
+      }).select("community");
+
+      const viewerCommunityIds = viewerMemberships.map((m) =>
+        m.community.toString()
+      );
+
+      // Find intersection with student's joined communities
+      mutualCommunities = joinedCommunities.filter((c) =>
+        viewerCommunityIds.includes(c._id.toString())
+      );
+    }
+
     const profile = {
       id: student._id,
       name: student.name,
+      role: student.role,
       avatar: student.profile.avatar,
       bio: student.profile.bio,
       interests: student.profile.interests,
@@ -113,6 +210,9 @@ router.get("/student/:id", optionalAuth, async (req, res) => {
         totalComments: student.statistics.totalComments,
         communitiesJoined: student.statistics.communitiesJoined,
       },
+      joinedCommunities, // Communities the student is a member of
+      ownedCommunities, // Communities created by the student
+      mutualCommunities, // Mutual communities with viewer
       joinedAt: student.createdAt,
     };
 

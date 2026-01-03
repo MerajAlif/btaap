@@ -47,6 +47,7 @@ const httpServer = createServer(app);
 // Allowed origins for CORS
 const allowedOrigins = [
   "http://localhost:3000",
+  "http://localhost:3001", // Vite fallback port
   "http://localhost:5173",
   "https://btaap-psi.vercel.app",
   "https://www.btaap.com",

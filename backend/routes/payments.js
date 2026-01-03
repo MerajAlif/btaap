@@ -17,6 +17,7 @@ router.post("/submit", protect, async (req, res) => {
       planName,
       credits,
       reference,
+      type = 'credit', // Default validation
     } = req.body;
 
     // Validation
@@ -50,8 +51,9 @@ router.post("/submit", protect, async (req, res) => {
       transactionId,
       amount,
       planName,
-      credits,
+      credits: credits || 0, // Ensure credits is 0 if not provided
       reference,
+      type,
       status: "pending",
     });
 
@@ -168,32 +170,69 @@ router.patch("/:id/status", protect, authorize("admin"), async (req, res) => {
     if (status === "rejected") {
       payment.rejectionReason = rejectionReason || "Payment rejected by admin";
     } else if (status === "approved") {
-      // Add credits to user account and set/extend expiry by 1 month
       const user = await User.findById(payment.userId);
       if (user) {
-        // 1) add credits
-        user.credits += payment.credits;
+        if (payment.type === 'subscription') {
+          // Handle Subscription Approval
+          const now = new Date();
+          const expiryDate = new Date();
+          expiryDate.setMonth(expiryDate.getMonth() + 1); // 1 month validity
 
-        // 2) compute new expiry
-        const now = new Date();
-        // base is existing expiry if still in future; otherwise now
-        const base =
-          user.creditExpiry && new Date(user.creditExpiry) > now
+          // Define plan limits based on payment plan name
+          let maxCommunities = 1;
+          let maxLiveClasses = 0;
+
+          // Normalize plan name check
+          const plan = payment.planName.toLowerCase();
+          if (plan.includes('starter')) {
+            maxCommunities = 1;
+            maxLiveClasses = 8;
+          } else if (plan.includes('professional') || plan.includes('pro')) {
+            maxCommunities = 3;
+            maxLiveClasses = 25;
+          } else if (plan.includes('institution')) {
+            maxCommunities = 999;
+            maxLiveClasses = 200;
+          }
+
+          user.mentorSubscription = {
+            planName: payment.planName,
+            expiry: expiryDate,
+            maxCommunities,
+            maxLiveClasses,
+            isActive: true,
+            features: ['community_access'] // Add other features if needed
+          };
+
+          // Also log this in credit history or a separate history? Reuse creditHistory for now
+          user.creditHistory.push({
+            amount: 0,
+            type: "purchase",
+            description: `Subscription: ${payment.planName} activated (TxID: ${payment.transactionId})`,
+            createdAt: new Date(),
+          });
+
+        } else {
+          // Handle Credit Approval (Existing Logic)
+          user.credits += payment.credits;
+
+          // 2) compute new expiry
+          const now = new Date();
+          const base = user.creditExpiry && new Date(user.creditExpiry) > now
             ? new Date(user.creditExpiry)
             : now;
 
-        // extend by 1 month
-        base.setMonth(base.getMonth() + 1);
-        user.creditExpiry = base;
+          base.setMonth(base.getMonth() + 1); // Extend credit validity by 1 month
+          user.creditExpiry = base;
 
-        // 3) (optional but recommended) log credit history
-        user.creditHistory.push({
-          amount: payment.credits,
-          type: "purchase",
-          description: `${payment.planName} plan approved (TxID: ${payment.transactionId})`,
-          createdAt: new Date(),
-        });
-
+          // 3) log credit history
+          user.creditHistory.push({
+            amount: payment.credits,
+            type: "purchase",
+            description: `${payment.planName} credits approved (TxID: ${payment.transactionId})`,
+            createdAt: new Date(),
+          });
+        }
         await user.save();
       }
     }

@@ -452,6 +452,7 @@ export default function PublicProfile() {
 
                         {/* Empty State */}
                         {(!profile.communities || profile.communities.length === 0) &&
+                            (!profile.ownedCommunities || profile.ownedCommunities.length === 0) &&
                             (!profile.joinedCommunities || profile.joinedCommunities.length === 0) && (
                                 <div className="text-center py-16 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
                                     <Users className="w-16 h-16 mx-auto text-gray-300 mb-4" />

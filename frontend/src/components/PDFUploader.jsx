@@ -17,6 +17,7 @@ export default function PDFUploader({ onUpload }) {
   const [tags, setTags] = useState([]);
   const [description, setDescription] = useState("");
   const [rating, setRating] = useState("");
+  const [creditCost, setCreditCost] = useState("5");
   const [uploading, setUploading] = useState(false);
 
   if (!isAdmin) return null;
@@ -36,6 +37,7 @@ export default function PDFUploader({ onUpload }) {
       if (tags?.length) form.append("tags", tags.join(","));
       if (description) form.append("description", description);
       if (rating) form.append("rating", rating);
+      if (creditCost) form.append("creditCost", creditCost);
 
       const res = await fetch("/api/pdfs/upload", {
         method: "POST",
@@ -58,6 +60,7 @@ export default function PDFUploader({ onUpload }) {
       setTags([])
       setDescription("");
       setRating("");
+      setCreditCost("5");
 
       // Reset file inputs
       const fileInputs = document.querySelectorAll('input[type="file"]');
@@ -111,6 +114,22 @@ export default function PDFUploader({ onUpload }) {
                 className="mt-1.5 border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500"
                 placeholder="4.5"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="creditCost" className="text-emerald-900 font-medium">
+                Credit Cost
+              </Label>
+              <Input
+                id="creditCost"
+                type="number"
+                min="0"
+                value={creditCost}
+                onChange={(e) => setCreditCost(e.target.value)}
+                className="mt-1.5 border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500"
+                placeholder="5"
+              />
+              <p className="text-xs text-gray-500 mt-1">Cost to download this book (Default: 5)</p>
             </div>
           </div>
 

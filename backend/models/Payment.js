@@ -28,6 +28,11 @@ const paymentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  type: {
+    type: String,
+    enum: ['credit', 'subscription'],
+    default: 'credit'
+  },
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],

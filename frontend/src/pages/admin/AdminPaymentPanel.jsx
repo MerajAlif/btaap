@@ -118,8 +118,8 @@ export default function AdminPaymentPanel() {
                             key={status}
                             onClick={() => setFilter(status)}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === status
-                                    ? 'bg-teal-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-teal-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                         >
                             {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -189,12 +189,20 @@ export default function AdminPaymentPanel() {
                                         <p className="font-mono font-semibold">{payment.transactionId}</p>
                                     </div>
                                     <div>
+                                        <p className="text-sm text-gray-600">Type</p>
+                                        <Badge variant={payment.type === 'subscription' ? 'secondary' : 'outline'} className="capitalize">
+                                            {payment.type || 'credit'}
+                                        </Badge>
+                                    </div>
+                                    <div>
                                         <p className="text-sm text-gray-600">Amount</p>
                                         <p className="font-semibold text-lg text-teal-600">৳{payment.amount}</p>
                                     </div>
                                     <div>
-                                        <p className="text-sm text-gray-600">Credits</p>
-                                        <p className="font-semibold text-teal-600">{payment.credits} credits</p>
+                                        <p className="text-sm text-gray-600">Details</p>
+                                        <p className="font-semibold text-teal-600">
+                                            {payment.type === 'subscription' ? 'Subscription' : `${payment.credits} credits`}
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="text-sm text-gray-600">Reference</p>
@@ -231,7 +239,7 @@ export default function AdminPaymentPanel() {
                                             ) : (
                                                 <>
                                                     <Check className="w-4 h-4" />
-                                                    Approve & Add Credits
+                                                    {payment.type === 'subscription' ? 'Approve Subscription' : 'Approve & Add Credits'}
                                                 </>
                                             )}
                                         </button>

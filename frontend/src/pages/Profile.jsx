@@ -224,8 +224,9 @@ export default function Profile() {
                 {email}
               </p>
               <div className="flex items-center gap-2 mt-2">
-                <Badge className="bg-white/20 text-white border-white/30 capitalize">
-                  {role || "user"}
+                <Badge className="bg-white/20 text-white border-white/30 px-3 py-1">
+                  <span className="opacity-70 mr-1 font-normal">Role:</span>
+                  <span className="capitalize font-semibold">{role || "User"}</span>
                 </Badge>
                 {isMentor && (
                   <Badge

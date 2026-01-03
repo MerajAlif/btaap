@@ -100,6 +100,15 @@ const userSchema = new mongoose.Schema(
     creditExpiry: { type: Date, default: null },
     creditHistory: { type: [creditHistorySchema], default: [] },
 
+    mentorSubscription: {
+      planName: { type: String, default: null },
+      expiry: { type: Date, default: null },
+      maxCommunities: { type: Number, default: 1 }, // Default for non-subscribed
+      maxLiveClasses: { type: Number, default: 0 },
+      features: [{ type: String }],
+      isActive: { type: Boolean, default: false }
+    },
+
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Pdf" }],
     statistics: { type: statisticsSchema, default: () => ({}) },
     downloadedPDFs: { type: [downloadedPdfSchema], default: [] },
