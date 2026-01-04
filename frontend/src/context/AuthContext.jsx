@@ -33,7 +33,15 @@ export function AuthProvider({ children }) {
 
             if (res.ok) {
                 const data = await res.json();
-                setUser(data.user);
+                // Merge extra data for mentors (communities, counts) into user object
+                setUser({
+                    ...data.user,
+                    communities: data.communities,
+                    stats: {
+                        totalMembers: data.totalMembers,
+                        pendingRequests: data.pendingRequestsCount
+                    }
+                });
             } else {
                 // Token invalid or expired
                 localStorage.removeItem("token");

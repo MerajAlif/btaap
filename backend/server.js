@@ -29,6 +29,7 @@ import taskRoutes from "./routes/tasks.js";
 import leaderboardRoutes from "./routes/leaderboard.js";
 import complaintRoutes from "./routes/complaints.js";
 import feedbackRoutes from "./routes/feedbacks.js";
+import reviewRoutes from "./routes/reviews.js";
 
 // Model imports for Socket.IO
 import DirectMessage from "./models/DirectMessage.js";
@@ -235,6 +236,7 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/complaints", complaintRoutes);
 app.use("/api/feedbacks", feedbackRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 // Root route for health check
 app.get("/", (req, res) => {

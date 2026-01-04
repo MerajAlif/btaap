@@ -3,6 +3,8 @@ import express from "express";
 import User from "../models/User.js";
 import Community from "../models/Community.js";
 import Membership from "../models/Membership.js";
+import MentorReview from "../models/MentorReview.js";
+import mongoose from "mongoose";
 import { protect, optionalAuth } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -139,6 +141,26 @@ router.get("/mentor/:id", optionalAuth, async (req, res) => {
       joinedCommunities, // Member of
       mutualCommunities, // Mutual
       joinedAt: mentor.createdAt,
+    };
+
+    // Calculate Online Experience (Unique Students)
+    const communityIds = ownedCommunities.map(c => c._id);
+    const uniqueStudents = await Membership.distinct("student", {
+      community: { $in: communityIds },
+      status: "approved"
+    });
+    profile.onlineExperience = uniqueStudents.length;
+
+    // Calculate Reviews Stats
+    const reviewStats = await MentorReview.aggregate([
+      { $match: { mentor: new mongoose.Types.ObjectId(req.params.id) } },
+      { $group: { _id: null, avgRating: { $avg: "$rating" }, totalReviews: { $sum: 1 } } }
+    ]);
+    const stats = reviewStats[0] || { avgRating: 0, totalReviews: 0 };
+
+    profile.ratings = {
+      average: parseFloat(stats.avgRating.toFixed(1)), // 1 decimal place
+      count: stats.totalReviews
     };
 
     res.json({ success: true, mentor: profile });

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import useAuth from "@/hooks/useAuth";
 import { BASE_URL } from "@/lib/api";
-import { Coins, Clock, TrendingUp, ShoppingCart } from "lucide-react";
+import { Coins, Clock, TrendingUp, ShoppingCart, Crown, Users, Video } from "lucide-react";
 
 export default function CreditDashboard() {
     const { user, refreshMe } = useAuth();
@@ -41,6 +41,57 @@ export default function CreditDashboard() {
                 <div className="flex items-center justify-between">
                     <h1 className="text-3xl font-bold text-gray-900">Credit Dashboard</h1>
                 </div>
+
+                {/* Active Mentor Subscription Status */}
+                {user?.mentorSubscription?.isActive && (
+                    <div className="animate-in slide-in-from-top-4 duration-700">
+                        <Card className="border-emerald-200 bg-emerald-50/50 shadow-lg relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+                            <CardContent className="p-8">
+                                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 text-emerald-700 font-bold tracking-wide text-sm uppercase">
+                                            <Crown className="w-4 h-4" />
+                                            Active Subscription
+                                        </div>
+                                        <h3 className="text-3xl font-extrabold text-gray-900">
+                                            {user.mentorSubscription.planName} Plan
+                                        </h3>
+                                        <div className="flex flex-wrap gap-4 text-sm text-gray-600 pt-2">
+                                            <div className="flex items-center gap-1.5">
+                                                <Users className="w-4 h-4 text-emerald-600" />
+                                                <span>
+                                                    <strong>{user.mentorSubscription.maxCommunities >= 99 ? "Unlimited" : user.mentorSubscription.maxCommunities}</strong> Communities
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <Video className="w-4 h-4 text-emerald-600" />
+                                                <span>
+                                                    <strong>{user.mentorSubscription.maxLiveClasses}</strong> Live Classes/mo
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-center md:text-right bg-white p-4 rounded-xl shadow-sm border border-emerald-100 min-w-[200px]">
+                                        <p className="text-sm text-gray-500 mb-1">Valid Until</p>
+                                        <p className="text-lg font-bold text-gray-900 mb-2">
+                                            {new Date(user.mentorSubscription.expiry).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                                        </p>
+                                        {(() => {
+                                            const daysLeft = Math.ceil((new Date(user.mentorSubscription.expiry) - new Date()) / (1000 * 60 * 60 * 24));
+                                            return (
+                                                <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${daysLeft < 7 ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80" : "border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-200"}`}>
+                                                    {daysLeft > 0 ? `${daysLeft} Days Remaining` : "Expiring Soon"}
+                                                </div>
+                                            )
+                                        })()}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
 
                 {error && (
                     <Alert variant="destructive">

@@ -94,16 +94,18 @@ export default function Profile() {
           try {
             const profileRes = await api(`/api/profiles/${u.role}/${u._id}`);
             if (profileRes.success) {
-              setCommunities({
-                owned: profileRes.profile.ownedCommunities || [],
-                joined: profileRes.profile.joinedCommunities || []
-              });
+              const profileData = u.role === 'mentor' ? profileRes.mentor : profileRes.student;
+              if (profileData) {
+                setCommunities({
+                  owned: (u.role === 'mentor' ? profileData.communities : profileData.ownedCommunities) || [],
+                  joined: profileData.joinedCommunities || []
+                });
+              }
             }
           } catch (commErr) {
             console.error("Failed to load communities", commErr);
           }
         }
-
       } catch (e) {
         setErr(e.message || "Failed to load profile");
       } finally {

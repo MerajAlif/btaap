@@ -1,11 +1,13 @@
-// src/pages/PublicProfile.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import useAuth from "@/hooks/useAuth";
 import {
@@ -19,7 +21,10 @@ import {
     UserPlus,
     UserCheck,
     UserMinus,
-    Clock
+    Clock,
+    Star,
+    MessageSquare,
+    Globe
 } from "lucide-react";
 
 export default function PublicProfile() {
@@ -28,10 +33,17 @@ export default function PublicProfile() {
     const { user: currentUser } = useAuth();
 
     const [profile, setProfile] = useState(null);
+    const [reviews, setReviews] = useState([]);
+    const [reviewsStats, setReviewsStats] = useState({ average: 0, count: 0 });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [connectionStatus, setConnectionStatus] = useState("none");
     const [actionLoading, setActionLoading] = useState(false);
+
+    // Review Form State
+    const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+    const [submittingReview, setSubmittingReview] = useState(false);
 
     useEffect(() => {
         loadProfile();
@@ -40,6 +52,9 @@ export default function PublicProfile() {
     useEffect(() => {
         if (currentUser && profile && currentUser._id !== profile.id) {
             checkConnectionStatus();
+        }
+        if (profile?.type === 'mentor') {
+            loadReviews();
         }
     }, [currentUser, profile, id]);
 
@@ -56,6 +71,18 @@ export default function PublicProfile() {
             setConnectionStatus(statusRes.status);
         } catch (err) {
             console.error("Failed to check connection status", err);
+        }
+    };
+
+    const loadReviews = async () => {
+        try {
+            const res = await api(`/api/reviews/mentor/${id}`);
+            if (res.success) {
+                setReviews(res.reviews);
+                setReviewsStats(res.stats);
+            }
+        } catch (error) {
+            console.error("Failed to load reviews:", error);
         }
     };
 
@@ -93,6 +120,33 @@ export default function PublicProfile() {
             console.error("Failed to remove connection", err);
         } finally {
             setActionLoading(false);
+        }
+    };
+
+    const handleSubmitReview = async (e) => {
+        e.preventDefault();
+        setSubmittingReview(true);
+        try {
+            const res = await api("/api/reviews", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    mentorId: id,
+                    rating: reviewForm.rating,
+                    comment: reviewForm.comment
+                })
+            });
+
+            if (res.success) {
+                setReviews([res.review, ...reviews]);
+                setIsReviewOpen(false);
+                setReviewForm({ rating: 5, comment: "" });
+                loadReviews(); // Refresh stats
+            }
+        } catch (error) {
+            alert(error.message || "Failed to submit review");
+        } finally {
+            setSubmittingReview(false);
         }
     };
 
@@ -139,6 +193,9 @@ export default function PublicProfile() {
     }
 
     const isOwnProfile = currentUser?._id === profile.id;
+    const isMentor = profile.type === "mentor";
+    // Check if current user is a student member of this mentor's communities
+    const canReview = currentUser?.role === "student" && profile.mutualCommunities?.length > 0;
 
     return (
         <div className="min-h-screen bg-white selection:bg-emerald-100">
@@ -177,6 +234,13 @@ export default function PublicProfile() {
                                                     <span className="text-gray-600 font-medium">
                                                         {profile.profile.title}
                                                     </span>
+                                                )}
+                                                {isMentor && (
+                                                    <div className="flex items-center gap-1 text-amber-500 ml-2">
+                                                        <Star className="w-4 h-4 fill-current" />
+                                                        <span className="font-bold text-gray-900">{profile.ratings?.average || "New"}</span>
+                                                        {profile.ratings?.count > 0 && <span className="text-gray-500 text-xs">({profile.ratings.count})</span>}
+                                                    </div>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -254,22 +318,35 @@ export default function PublicProfile() {
                     {/* Sidebar */}
                     <div className="space-y-6">
                         {/* Statistics */}
-                        <Card className="border-gray-200">
+                        <Card className="border-gray-200 shadow-sm">
                             <CardContent className="p-6">
                                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
                                     <Sparkles className="w-5 h-5 text-emerald-600" />
                                     Statistics
                                 </h3>
                                 <div className="space-y-3">
-                                    {profile.type === "mentor" ? (
+                                    {isMentor ? (
                                         <>
+                                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                                <span className="text-gray-600">Online Experience</span>
+                                                <div className="text-right">
+                                                    <span className="font-bold text-emerald-700 flex items-center justify-end gap-1">
+                                                        {profile.onlineExperience || 0}
+                                                        <Globe className="w-3 h-3 text-emerald-500" />
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-400 block">Unique Students</span>
+                                                </div>
+                                            </div>
                                             <div className="flex justify-between items-center py-2 border-b border-gray-100">
                                                 <span className="text-gray-600">Communities</span>
                                                 <span className="font-bold text-emerald-700">{profile.statistics?.communitiesOwned || 0}</span>
                                             </div>
                                             <div className="flex justify-between items-center py-2">
-                                                <span className="text-gray-600">Students</span>
-                                                <span className="font-bold text-teal-700">{profile.statistics?.totalStudents || 0}</span>
+                                                <span className="text-gray-600">Rating</span>
+                                                <span className="font-bold text-amber-600 flex items-center gap-1">
+                                                    {profile.ratings?.average || 0}
+                                                    <Star className="w-3 h-3 fill-current" />
+                                                </span>
                                             </div>
                                         </>
                                     ) : (
@@ -289,12 +366,11 @@ export default function PublicProfile() {
                         </Card>
 
                         {/* About & Links (Mentor only) */}
-                        {profile.type === "mentor" && (profile.profile?.linkedIn || profile.profile?.portfolio || profile.profile?.credentials || profile.profile?.experience) && (
-                            <Card className="border-gray-200">
+                        {isMentor && (profile.profile?.linkedIn || profile.profile?.portfolio || profile.profile?.credentials || profile.profile?.experience) && (
+                            <Card className="border-gray-200 shadow-sm">
                                 <CardContent className="p-6">
                                     <h3 className="font-bold text-lg mb-4">About</h3>
                                     <div className="space-y-4">
-                                        {/* Credentials */}
                                         {profile.profile?.credentials && (
                                             <div className="pb-3 border-b border-gray-100">
                                                 <div className="flex items-center gap-2 text-amber-600 mb-1.5">
@@ -305,38 +381,26 @@ export default function PublicProfile() {
                                             </div>
                                         )}
 
-                                        {/* Experience */}
                                         {profile.profile?.experience && (
                                             <div className={`${(profile.profile?.linkedIn || profile.profile?.portfolio) ? 'pb-3 border-b border-gray-100' : ''}`}>
                                                 <div className="flex items-center gap-2 text-emerald-600 mb-1.5">
                                                     <Briefcase className="w-4 h-4" />
                                                     <span className="font-semibold text-sm">Experience</span>
                                                 </div>
-                                                <p className="text-gray-700 text-sm pl-6">{profile.profile.experience} years</p>
+                                                <p className="text-gray-700 text-sm pl-6">{profile.profile.experience}</p>
                                             </div>
                                         )}
 
-                                        {/* Links */}
                                         {(profile.profile?.linkedIn || profile.profile?.portfolio) && (
                                             <div className="space-y-2">
                                                 {profile.profile?.linkedIn && (
-                                                    <a
-                                                        href={profile.profile.linkedIn}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors text-sm"
-                                                    >
+                                                    <a href={profile.profile.linkedIn} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors text-sm">
                                                         <Link2 className="w-4 h-4" />
                                                         <span className="font-medium">LinkedIn</span>
                                                     </a>
                                                 )}
                                                 {profile.profile?.portfolio && (
-                                                    <a
-                                                        href={profile.profile.portfolio}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 p-2 rounded-lg transition-colors text-sm"
-                                                    >
+                                                    <a href={profile.profile.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 p-2 rounded-lg transition-colors text-sm">
                                                         <Briefcase className="w-4 h-4" />
                                                         <span className="font-medium">Portfolio</span>
                                                     </a>
@@ -349,12 +413,12 @@ export default function PublicProfile() {
                         )}
                     </div>
 
-                    {/* Main Content - Communities */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Owned Communities (Mentor only) */}
-                        {profile.type === "mentor" && profile.communities && profile.communities.length > 0 && (
+                    {/* Main Content */}
+                    <div className="lg:col-span-2 space-y-8">
+                        {/* Communities */}
+                        {isMentor && profile.communities && profile.communities.length > 0 && (
                             <div>
-                                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900">
                                     <Users className="w-6 h-6 text-emerald-600" />
                                     Communities ({profile.communities.length})
                                 </h2>
@@ -366,34 +430,17 @@ export default function PublicProfile() {
                                                     <div className="flex items-start gap-4">
                                                         <Avatar className="w-16 h-16 rounded-xl flex-shrink-0">
                                                             <AvatarImage src={comm.coverImage} />
-                                                            <AvatarFallback className="rounded-xl bg-emerald-100 text-emerald-700 font-bold text-lg">
-                                                                {comm.name[0]}
-                                                            </AvatarFallback>
+                                                            <AvatarFallback className="rounded-xl bg-emerald-100 text-emerald-700 font-bold text-lg">{comm.name[0]}</AvatarFallback>
                                                         </Avatar>
                                                         <div className="flex-1 min-w-0">
-                                                            <h3 className="font-bold text-gray-900 group-hover:text-emerald-600 transition-colors mb-1 line-clamp-1">
-                                                                {comm.name}
-                                                            </h3>
-                                                            {comm.description && (
-                                                                <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                                                                    {comm.description}
-                                                                </p>
-                                                            )}
+                                                            <h3 className="font-bold text-gray-900 group-hover:text-emerald-600 transition-colors mb-1 line-clamp-1">{comm.name}</h3>
+                                                            {comm.description && <p className="text-sm text-gray-600 line-clamp-2 mb-3">{comm.description}</p>}
                                                             <div className="flex flex-wrap items-center gap-3 text-xs">
                                                                 <div className="flex items-center gap-1 text-gray-600">
                                                                     <Users className="w-3.5 h-3.5" />
                                                                     <span>{comm.statistics?.totalMembers || 0} members</span>
                                                                 </div>
-                                                                {comm.category && (
-                                                                    <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-[10px]">
-                                                                        {comm.category}
-                                                                    </Badge>
-                                                                )}
-                                                                {comm.mentorSettings?.monthlyFee > 0 && (
-                                                                    <Badge className="bg-emerald-100 text-emerald-700 border-none text-[10px]">
-                                                                        ৳{comm.mentorSettings.monthlyFee}/mo
-                                                                    </Badge>
-                                                                )}
+                                                                {comm.category && <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-[10px]">{comm.category}</Badge>}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -404,8 +451,7 @@ export default function PublicProfile() {
                                 </div>
                             </div>
                         )}
-
-                        {/* Joined Communities */}
+                        {/* Joined Communities (for students/mentors both) */}
                         {profile.joinedCommunities && profile.joinedCommunities.length > 0 && (
                             <div>
                                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
@@ -420,25 +466,13 @@ export default function PublicProfile() {
                                                     <div className="flex items-start gap-4">
                                                         <Avatar className="w-16 h-16 rounded-xl flex-shrink-0">
                                                             <AvatarImage src={comm.coverImage} />
-                                                            <AvatarFallback className="rounded-xl bg-teal-100 text-teal-700 font-bold text-lg">
-                                                                {comm.name[0]}
-                                                            </AvatarFallback>
+                                                            <AvatarFallback className="rounded-xl bg-teal-100 text-teal-700 font-bold text-lg">{comm.name[0]}</AvatarFallback>
                                                         </Avatar>
                                                         <div className="flex-1 min-w-0">
-                                                            <h3 className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors mb-1 line-clamp-1">
-                                                                {comm.name}
-                                                            </h3>
-                                                            {comm.description && (
-                                                                <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                                                                    {comm.description}
-                                                                </p>
-                                                            )}
+                                                            <h3 className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors mb-1 line-clamp-1">{comm.name}</h3>
+                                                            {comm.description && <p className="text-sm text-gray-600 line-clamp-2 mb-3">{comm.description}</p>}
                                                             <div className="flex flex-wrap items-center gap-3 text-xs">
-                                                                {comm.category && (
-                                                                    <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-[10px]">
-                                                                        {comm.category}
-                                                                    </Badge>
-                                                                )}
+                                                                {comm.category && <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-[10px]">{comm.category}</Badge>}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -450,16 +484,96 @@ export default function PublicProfile() {
                             </div>
                         )}
 
-                        {/* Empty State */}
-                        {(!profile.communities || profile.communities.length === 0) &&
-                            (!profile.ownedCommunities || profile.ownedCommunities.length === 0) &&
-                            (!profile.joinedCommunities || profile.joinedCommunities.length === 0) && (
-                                <div className="text-center py-16 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                                    <Users className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No Communities Yet</h3>
-                                    <p className="text-gray-500">This user hasn't joined or created any communities</p>
+
+                        {/* REVIEWS SECTION (New) */}
+                        {isMentor && (
+                            <div className="pt-8 border-t border-gray-200" id="reviews">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                                        <MessageSquare className="w-6 h-6 text-emerald-600" />
+                                        Reviews & Feedback
+                                    </h2>
+
+                                    {canReview && (
+                                        <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button size="sm" variant="outline" className="border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+                                                    Write a Review
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Write a Review for {profile.name}</DialogTitle>
+                                                </DialogHeader>
+                                                <form onSubmit={handleSubmitReview} className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label>Rating</Label>
+                                                        <div className="flex gap-2">
+                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                <button
+                                                                    key={star}
+                                                                    type="button"
+                                                                    onClick={() => setReviewForm(prev => ({ ...prev, rating: star }))}
+                                                                    className={`p-1 rounded-full transition-colors ${reviewForm.rating >= star ? "text-amber-500" : "text-gray-300"
+                                                                        }`}
+                                                                >
+                                                                    <Star className="w-8 h-8 fill-current" />
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Comment</Label>
+                                                        <Textarea
+                                                            value={reviewForm.comment}
+                                                            onChange={(e) => setReviewForm(prev => ({ ...prev, comment: e.target.value }))}
+                                                            placeholder="Share your experience..."
+                                                            rows={4}
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <Button type="submit" disabled={submittingReview} className="w-full bg-emerald-600 hover:bg-emerald-700">
+                                                        {submittingReview ? "Submitting..." : "Submit Review"}
+                                                    </Button>
+                                                </form>
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
                                 </div>
-                            )}
+
+                                {/* Reviews List */}
+                                <div className="space-y-4">
+                                    {reviews.length > 0 ? (
+                                        reviews.map((review) => (
+                                            <div key={review._id} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                                <div className="flex items-start gap-3">
+                                                    <Avatar className="w-10 h-10 border border-white shadow-sm">
+                                                        <AvatarImage src={review.student?.profile?.avatar} />
+                                                        <AvatarFallback>{review.student?.name?.charAt(0)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <h4 className="font-semibold text-gray-900">{review.student?.name}</h4>
+                                                            <span className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <div className="flex text-amber-500 mb-2">
+                                                            {[...Array(5)].map((_, i) => (
+                                                                <Star key={i} className={`w-3 h-3 ${i < review.rating ? "fill-current" : "text-gray-300 fill-none"}`} />
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-gray-700 text-sm leading-relaxed">{review.comment}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-8 text-gray-500 italic bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                            No reviews yet. Be the first to review!
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>

@@ -1,6 +1,6 @@
 // src/pages/ApplyMentor.jsx
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -56,9 +56,9 @@ export default function ApplyMentor() {
 
       await applyAsMentor(payload);
       await refreshMe();
-      
+
       setSuccess("Application submitted successfully! Awaiting admin approval.");
-      
+
       setTimeout(() => {
         navigate("/pending-approval");
       }, 2000);
@@ -79,6 +79,39 @@ export default function ApplyMentor() {
             You're already a mentor! Your status: <strong>{user.approvalStatus}</strong>
           </AlertDescription>
         </Alert>
+      </div>
+    );
+  }
+
+  // Check valid subscription (New Requirement)
+  if (!user?.mentorSubscription?.isActive) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full border-0 shadow-xl bg-white">
+          <CardContent className="py-12 text-center space-y-6">
+            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Award className="w-10 h-10 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Mentor Subscription Required
+              </h3>
+              <p className="text-gray-500 mb-8 px-4">
+                To become a mentor and create communities, you must have an active Mentor Subscription plan.
+              </p>
+              <div className="flex flex-col gap-3">
+                <Button asChild size="lg" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-full">
+                  <Link to="/pricing">
+                    View Subscription Plans
+                  </Link>
+                </Button>
+                <Button variant="ghost" onClick={() => navigate(-1)}>
+                  Go Back
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -131,7 +164,7 @@ export default function ApplyMentor() {
                   name="expertise"
                   value={form.expertise}
                   onChange={handleChange}
-                  placeholder="React, Node.js, MongoDB, Python (comma separated)"
+                  placeholder="Physics, Chemistry, Biology, Math, etc."
                   required
                 />
                 <p className="text-xs text-gray-500">
@@ -149,7 +182,7 @@ export default function ApplyMentor() {
                   name="experience"
                   value={form.experience}
                   onChange={handleChange}
-                  placeholder="e.g., 5+ years building full-stack applications, worked at major tech companies, led development teams..."
+                  placeholder="For example: 5+ years of experience in physics, chemistry, biology, math, etc."
                   required
                   rows={4}
                 />
@@ -168,7 +201,7 @@ export default function ApplyMentor() {
                   name="credentials"
                   value={form.credentials}
                   onChange={handleChange}
-                  placeholder="AWS Certified, Published author, Conference speaker..."
+                  placeholder="For example: Physics Olympiad, Chemistry Olympiad, Biology Olympiad, Math Olympiad, etc."
                 />
                 <p className="text-xs text-gray-500">
                   Any relevant certifications, awards, or achievements

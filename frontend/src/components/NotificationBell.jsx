@@ -36,7 +36,6 @@ export default function NotificationBell() {
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
-            transports: ['websocket', 'polling']
         });
 
         socketRef.current.on("connect_error", (err) => {

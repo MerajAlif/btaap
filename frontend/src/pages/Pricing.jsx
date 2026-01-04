@@ -183,23 +183,125 @@ export default function PricingPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="credits" className="w-full max-w-5xl mx-auto">
-          <div className="flex justify-center mb-10">
-            <TabsList className="grid w-full max-w-md grid-cols-2 h-12 p-1 bg-white border shadow-sm">
-              <TabsTrigger value="credits" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 text-gray-600">
-                <Coins className="w-4 h-4 mr-2" />
-                Student Credits
-              </TabsTrigger>
-              <TabsTrigger value="subscriptions" className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 text-gray-600">
-                <Crown className="w-4 h-4 mr-2" />
-                Mentor Subscriptions
-              </TabsTrigger>
-            </TabsList>
+        {/* Active Subscription Status */}
+        {user?.mentorSubscription?.isActive && (
+          <div className="max-w-3xl mx-auto mb-16 animate-in slide-in-from-top-4 duration-700">
+            <Card className="border-emerald-200 bg-emerald-50/50 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+              <CardContent className="p-8">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-emerald-700 font-bold tracking-wide text-sm uppercase">
+                      <Crown className="w-4 h-4" />
+                      Active Subscription
+                    </div>
+                    <h3 className="text-3xl font-extrabold text-gray-900">
+                      {user.mentorSubscription.planName} Plan
+                    </h3>
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-600 pt-2">
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-emerald-600" />
+                        <span>
+                          <strong>{user.mentorSubscription.maxCommunities >= 99 ? "Unlimited" : user.mentorSubscription.maxCommunities}</strong> Communities
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Video className="w-4 h-4 text-emerald-600" />
+                        <span>
+                          <strong>{user.mentorSubscription.maxLiveClasses}</strong> Live Classes/mo
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-center md:text-right bg-white p-4 rounded-xl shadow-sm border border-emerald-100 min-w-[200px]">
+                    <p className="text-sm text-gray-500 mb-1">Valid Until</p>
+                    <p className="text-lg font-bold text-gray-900 mb-2">
+                      {new Date(user.mentorSubscription.expiry).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                    </p>
+                    {(() => {
+                      const daysLeft = Math.ceil((new Date(user.mentorSubscription.expiry) - new Date()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <Badge variant={daysLeft < 7 ? "destructive" : "secondary"} className={daysLeft < 7 ? "" : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"}>
+                          {daysLeft > 0 ? `${daysLeft} Days Remaining` : "Expiring Soon"}
+                        </Badge>
+                      )
+                    })()}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <div className="space-y-20">
+
+          {/* Section 1: Mentor Subscriptions */}
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium mb-3">
+                <Crown className="w-4 h-4" />
+                For Mentors
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Mentor Subscriptions</h2>
+              <p className="text-gray-600">Monthly subscriptions to manage communities and live classes.</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+              {subscriptionPlans.map((plan) => (
+                <Card
+                  key={plan.name}
+                  className={`relative border-2 transition-all hover:shadow-lg ${plan.featured ? "border-indigo-500 shadow-xl scale-105 z-10" : "border-gray-100 hover:border-gray-200"}`}
+                >
+                  {plan.featured && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+                      Recommended
+                    </div>
+                  )}
+                  <CardHeader>
+                    <CardTitle>{plan.name}</CardTitle>
+                    <CardDescription>{plan.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-extrabold text-gray-900">{plan.price}</span>
+                      <span className="text-gray-500 font-medium">/ month</span>
+                    </div>
+
+                    <ul className="space-y-3">
+                      {plan.features.map((feature) => (
+                        <li key={feature} className="flex items-start gap-3">
+                          <Check className={`w-5 h-5 flex-shrink-0 text-${plan.color}-600`} />
+                          <span className="text-sm text-gray-700">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                  <CardFooter>
+                    <button
+                      onClick={() => handleGetStarted(plan)}
+                      className={`w-full py-3 rounded-xl font-bold transition-all ${plan.featured
+                        ? "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg"
+                        : "bg-white text-indigo-600 border-2 border-indigo-100 hover:border-indigo-200 hover:bg-indigo-50"
+                        }`}
+                    >
+                      Subscribe Now
+                    </button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
           </div>
 
-          <TabsContent value="credits">
-            <div className="mb-8 text-center">
-              <p className="text-gray-600 mb-2">Credits used for accessing premium content. Any user can purchase these.</p>
+          {/* Section 2: Student Credits */}
+          <div className="max-w-5xl mx-auto pt-10 border-t border-gray-200">
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium mb-3">
+                <Coins className="w-4 h-4" />
+                For Students
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Student Credits</h2>
+              <p className="text-gray-600">Credits used for accessing premium content. Any user can purchase these.</p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 px-4 md:px-0">
@@ -248,59 +350,9 @@ export default function PricingPage() {
                 </Card>
               ))}
             </div>
-          </TabsContent>
+          </div>
 
-          <TabsContent value="subscriptions">
-            <div className="mb-8 text-center">
-              <p className="text-gray-600">Monthly subscriptions for Mentors to manage communities and live classes.</p>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-              {subscriptionPlans.map((plan) => (
-                <Card
-                  key={plan.name}
-                  className={`relative border-2 transition-all hover:shadow-lg ${plan.featured ? "border-indigo-500 shadow-xl scale-105 z-10" : "border-gray-100 hover:border-gray-200"}`}
-                >
-                  {plan.featured && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
-                      Recommended
-                    </div>
-                  )}
-                  <CardHeader>
-                    <CardTitle>{plan.name}</CardTitle>
-                    <CardDescription>{plan.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-extrabold text-gray-900">{plan.price}</span>
-                      <span className="text-gray-500 font-medium">/ month</span>
-                    </div>
-
-                    <ul className="space-y-3">
-                      {plan.features.map((feature) => (
-                        <li key={feature} className="flex items-start gap-3">
-                          <Check className={`w-5 h-5 flex-shrink-0 text-${plan.color}-600`} />
-                          <span className="text-sm text-gray-700">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                  <CardFooter>
-                    <button
-                      onClick={() => handleGetStarted(plan)}
-                      className={`w-full py-3 rounded-xl font-bold transition-all ${plan.featured
-                        ? "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg"
-                        : "bg-white text-indigo-600 border-2 border-indigo-100 hover:border-indigo-200 hover:bg-indigo-50"
-                        }`}
-                    >
-                      Subscribe Now
-                    </button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
+        </div>
 
         {/* Payment Modal */}
         {showPaymentModal && (

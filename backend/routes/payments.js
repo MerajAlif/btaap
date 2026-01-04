@@ -26,7 +26,7 @@ router.post("/submit", protect, async (req, res) => {
       !transactionId ||
       !amount ||
       !planName ||
-      !credits ||
+      credits === undefined ||
       !reference
     ) {
       return res.status(400).json({

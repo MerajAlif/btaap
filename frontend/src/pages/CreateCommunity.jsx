@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createCommunity } from "@/lib/communityApi";
 import useAuth from "@/hooks/useAuth";
-import { Plus, ArrowLeft, CheckCircle, AlertCircle, Shield, GraduationCap } from "lucide-react";
+import {
+  Plus, ArrowLeft, CheckCircle, AlertCircle, Shield, GraduationCap,
+  Sparkles, Lock, Globe, Image as ImageIcon, CreditCard
+} from "lucide-react";
 
 export default function CreateCommunity() {
   const { user, refreshMe } = useAuth();
@@ -36,6 +39,14 @@ export default function CreateCommunity() {
   const [success, setSuccess] = useState("");
 
   const CREATION_COST = user?.role === "student" ? 0 : 10;
+  const isMentor = user?.role === "mentor";
+
+  // Subscription & Limits Check
+  const subscriptionActive = user?.mentorSubscription?.isActive;
+  const maxCommunities = user?.mentorSubscription?.maxCommunities || 0;
+  // Fallback to 0 if communities array not yet populated in context
+  const currentCommunities = user?.communities?.length || 0;
+  const limitReached = isMentor && (currentCommunities >= maxCommunities);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -48,6 +59,19 @@ export default function CreateCommunity() {
     setError("");
     setSuccess("");
 
+    if (isMentor && !subscriptionActive) {
+      setError("You need an active mentor subscription to create communities.");
+      setSaving(false);
+      return;
+    }
+
+    if (isMentor && limitReached) {
+      setError(`You have reached your limit of ${maxCommunities} communities. Please upgrade your plan.`);
+      setSaving(false);
+      return;
+    }
+
+
     if (CREATION_COST > 0 && user.credits < CREATION_COST) {
       setError(`You need ${CREATION_COST} credits to create a community. You have ${user.credits} credits.`);
       setSaving(false);
@@ -56,7 +80,7 @@ export default function CreateCommunity() {
 
     if (CREATION_COST > 0) {
       const confirmed = window.confirm(
-        `Creating a community will cost ${CREATION_COST} credits. You currently have ${user.credits} credits. Continue?`
+        `Creating a community will cost ${CREATION_COST} credits.\nCurrent Balance: ${user.credits}\n\nContinue?`
       );
 
       if (!confirmed) {
@@ -77,7 +101,7 @@ export default function CreateCommunity() {
           isPrivate: form.isPrivate,
           allowPosts: true,
         },
-        mentorSettings: user.role === "mentor" ? {
+        mentorSettings: isMentor ? {
           bkashNumber: form.bkashNumber,
           monthlyFee: Number(form.monthlyFee),
           classesPerMonth: Number(form.classesPerMonth),
@@ -100,280 +124,237 @@ export default function CreateCommunity() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-6">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-purple-900 flex items-center gap-3">
-              <Plus className="w-8 h-8" />
-              Create Community
-            </h1>
-            <p className="text-purple-700 mt-1">
-              Build a space for your {user?.role === "mentor" ? "students" : "peers"} to learn and grow
-            </p>
-            <div className="mt-2 flex items-center gap-2">
-              <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                Cost: {CREATION_COST === 0 ? "Free" : `${CREATION_COST} credits`}
-              </Badge>
-              <span className="text-sm text-gray-600">
-                Your balance: <strong className={user?.credits >= CREATION_COST ? "text-green-600" : "text-red-600"}>
-                  {user?.credits || 0} credits
-                </strong>
-              </span>
+  // BLOCKING VIEW: No Subscription
+  if (isMentor && !subscriptionActive) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full border-0 shadow-xl bg-white overflow-hidden">
+          <div className="h-2 bg-red-500 w-full" />
+          <CardContent className="py-12 text-center space-y-6">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CreditCard className="w-10 h-10 text-red-600" />
             </div>
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Subscription Expired
+              </h3>
+              <p className="text-gray-500 mb-8 px-4">
+                Your mentor subscription is not active. Please renew to create new communities.
+              </p>
+              <div className="flex flex-col gap-3">
+                <Button asChild size="lg" className="w-full bg-red-600 hover:bg-red-700 text-white rounded-full">
+                  <Link to="/pricing">
+                    Renew Subscription
+                  </Link>
+                </Button>
+                <Button variant="ghost" onClick={() => navigate(-1)}>
+                  Go Back
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // BLOCKING VIEW: Limit Reached
+  if (isMentor && limitReached) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full border-0 shadow-xl bg-white overflow-hidden">
+          <div className="h-2 bg-amber-500 w-full" />
+          <CardContent className="py-12 text-center space-y-6">
+            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-10 h-10 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Community Limit Reached
+              </h3>
+              <p className="text-gray-500 mb-2 px-4">
+                You have created <strong>{currentCommunities}</strong> out of <strong>{maxCommunities}</strong> allowed communities.
+              </p>
+              <p className="text-sm text-gray-400 mb-8">
+                Upgrade your plan to create more.
+              </p>
+              <div className="flex flex-col gap-3">
+                <Button asChild size="lg" className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-full">
+                  <Link to="/pricing">
+                    Upgrade Plan
+                  </Link>
+                </Button>
+                <Button variant="ghost" onClick={() => navigate(-1)}>
+                  Go Back
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-6 font-sans">
+      <div className="max-w-2xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-700 fade-in">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Create Community</h1>
+            <p className="text-gray-500">Launch your new learning space in seconds.</p>
           </div>
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/communities")}
-            className="gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
+          <Button variant="outline" onClick={() => navigate("/communities")} className="hidden sm:flex rounded-full border-gray-300 hover:border-gray-400">
             Cancel
           </Button>
         </div>
 
+        {/* Status Alerts */}
         {error && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="animate-in zoom-in-95">
+            <AlertCircle className="w-4 h-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
         {success && (
-          <Alert className="bg-green-50 border-green-200">
-            <CheckCircle className="w-4 h-4 text-green-600" />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          <Alert className="bg-emerald-50 border-emerald-200 animate-in zoom-in-95">
+            <CheckCircle className="w-4 h-4 text-emerald-600" />
+            <AlertDescription className="text-emerald-800">{success}</AlertDescription>
           </Alert>
         )}
 
-        {user?.credits < CREATION_COST && (
-          <Alert className="bg-red-50 border-red-200">
-            <AlertCircle className="w-4 h-4 text-red-600" />
-            <AlertDescription className="text-red-800">
-              <strong>Insufficient Credits!</strong> You need {CREATION_COST} credits to create a community.
-              You currently have {user.credits} credits.{" "}
-              <Link to="/pricing" className="underline font-semibold">
-                Purchase credits here
-              </Link>
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Pricing Info */}
+        <div className="flex items-center gap-3 text-sm bg-white p-3 rounded-xl shadow-sm border border-emerald-100/50">
+          <div className="bg-emerald-100 p-2 rounded-lg text-emerald-700">
+            <CreditCard className="w-4 h-4" />
+          </div>
+          <div className="flex-1">
+            <span className="text-gray-600">Creation Cost: </span>
+            <span className="font-semibold text-gray-900">{CREATION_COST === 0 ? "Free" : `${CREATION_COST} credits`}</span>
+          </div>
+          <div className="text-right">
+            <span className="text-gray-600">Your Balance: </span>
+            <span className={`font-bold ${user?.credits >= CREATION_COST ? "text-emerald-600" : "text-red-500"}`}>
+              {user?.credits || 0}
+            </span>
+          </div>
+        </div>
 
-        <form onSubmit={handleSubmit}>
-          <Card className="border-purple-200">
+        <form onSubmit={handleSubmit} className="space-y-8">
+
+          {/* Main Info Card */}
+          <Card className="border-0 shadow-lg shadow-emerald-100 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-emerald-400 to-teal-400" />
             <CardHeader>
-              <CardTitle>Community Details</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-emerald-500" />
+                Basic Details
+              </CardTitle>
+              <CardDescription>Tell people what your community is about.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  {user?.role === "mentor" ? <Shield className="w-4 h-4 text-purple-600" /> : <GraduationCap className="w-4 h-4 text-blue-600" />}
-                  Included Features ({user?.role === "mentor" ? "Mentor" : "Student"} Plan)
-                </h3>
-                <ul className="grid grid-cols-2 gap-2 text-sm">
-                  <li className="flex items-center gap-2 text-green-700">
-                    <CheckCircle className="w-3 h-3" /> Real-time Chat
-                  </li>
-                  <li className="flex items-center gap-2 text-green-700">
-                    <CheckCircle className="w-3 h-3" /> Resource Sharing
-                  </li>
-                  {user?.role === "mentor" ? (
-                    <>
-                      <li className="flex items-center gap-2 text-purple-700 font-medium">
-                        <CheckCircle className="w-3 h-3" /> Live Classes
-                      </li>
-                      <li className="flex items-center gap-2 text-purple-700 font-medium">
-                        <CheckCircle className="w-3 h-3" /> Announcements
-                      </li>
-                    </>
-                  ) : (
-                    <>
-                      <li className="flex items-center gap-2 text-gray-400">
-                        <span className="w-3 h-3 rounded-full border border-gray-300 block"></span> Live Classes (Mentor only)
-                      </li>
-                      <li className="flex items-center gap-2 text-gray-400">
-                        <span className="w-3 h-3 rounded-full border border-gray-300 block"></span> Announcements (Mentor only)
-                      </li>
-                    </>
-                  )}
-                </ul>
+              <div className="space-y-2">
+                <Label htmlFor="name">Community Name <span className="text-red-500">*</span></Label>
+                <Input id="name" name="name" value={form.name} onChange={handleChange} required maxLength={100} placeholder="e.g. Full Stack Developers Hub" className="h-11 focus-visible:ring-emerald-500" />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="name">
-                  Community Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  placeholder="e.g., Advanced React Mastery"
-                  required
-                  maxLength={100}
-                />
+                <Label htmlFor="description">Description <span className="text-red-500">*</span></Label>
+                <Textarea id="description" name="description" value={form.description} onChange={handleChange} required rows={4} maxLength={1000} placeholder="Describe the purpose/goals of your community..." className="resize-none focus-visible:ring-emerald-500" />
+                <p className="text-xs text-gray-400 text-right">{form.description.length}/1000</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">
-                  Description <span className="text-red-500">*</span>
-                </Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  placeholder="What will members learn in this community?"
-                  required
-                  maxLength={1000}
-                  rows={4}
-                />
-                <p className="text-xs text-gray-500">
-                  {form.description.length}/1000 characters
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="category">
-                  Category <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="category"
-                  name="category"
-                  value={form.category}
-                  onChange={handleChange}
-                  placeholder="e.g., Technology, Design, Business"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tags">Tags (optional)</Label>
-                <Input
-                  id="tags"
-                  name="tags"
-                  value={form.tags}
-                  onChange={handleChange}
-                  placeholder="React, JavaScript, Frontend (comma separated)"
-                />
-                <p className="text-xs text-gray-500">
-                  Separate tags with commas
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="coverImage">Cover Image URL (optional)</Label>
-                <Input
-                  id="coverImage"
-                  name="coverImage"
-                  value={form.coverImage}
-                  onChange={handleChange}
-                  placeholder="https://example.com/image.jpg"
-                  type="url"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="maxMembers">Max Members (optional)</Label>
-                <Input
-                  id="maxMembers"
-                  name="maxMembers"
-                  type="number"
-                  min="1"
-                  value={form.maxMembers}
-                  onChange={handleChange}
-                  placeholder="Leave blank for unlimited"
-                />
-              </div>
-
-              <div className="space-y-4 pt-4 border-t">
-                <h3 className="font-semibold">Privacy Settings</h3>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="isPrivate">Private community</Label>
-                    <p className="text-xs text-gray-500">Only visible to members</p>
-                  </div>
-                  <Switch
-                    id="isPrivate"
-                    checked={form.isPrivate}
-                    onCheckedChange={(checked) => setForm(prev => ({ ...prev, isPrivate: checked }))}
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category <span className="text-red-500">*</span></Label>
+                  <Input id="category" name="category" value={form.category} onChange={handleChange} required placeholder="e.g. Technology" className="h-11 focus-visible:ring-emerald-500" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tags">Tags (comma separated)</Label>
+                  <Input id="tags" name="tags" value={form.tags} onChange={handleChange} placeholder="react, nodejs, ui/ux" className="h-11 focus-visible:ring-emerald-500" />
                 </div>
               </div>
 
-              {user?.role === "mentor" && (
-                <div className="space-y-4 pt-4 border-t">
-                  <h3 className="font-semibold text-purple-900">Mentor Settings</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="bkashNumber">Bkash Number (for payments)</Label>
-                      <Input
-                        id="bkashNumber"
-                        name="bkashNumber"
-                        value={form.bkashNumber}
-                        onChange={handleChange}
-                        placeholder="017..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="monthlyFee">Monthly Fee (BDT)</Label>
-                      <Input
-                        id="monthlyFee"
-                        name="monthlyFee"
-                        type="number"
-                        min="0"
-                        value={form.monthlyFee}
-                        onChange={handleChange}
-                        placeholder="e.g. 500"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="classesPerMonth">Classes per Month</Label>
-                      <Input
-                        id="classesPerMonth"
-                        name="classesPerMonth"
-                        type="number"
-                        min="1"
-                        value={form.classesPerMonth}
-                        onChange={handleChange}
-                        placeholder="e.g. 8"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="curriculumDescription">Month's Plan (Curriculum)</Label>
-                    <Textarea
-                      id="curriculumDescription"
-                      name="curriculumDescription"
-                      value={form.curriculumDescription}
-                      onChange={handleChange}
-                      placeholder="Outline what students will learn this month..."
-                      rows={4}
-                      maxLength={2000}
-                    />
-                  </div>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="coverImage" className="flex items-center gap-2"><ImageIcon className="w-4 h-4 text-gray-400" /> Cover Image URL</Label>
+                <Input id="coverImage" name="coverImage" value={form.coverImage} onChange={handleChange} placeholder="https://..." type="url" className="h-11 focus-visible:ring-emerald-500" />
+              </div>
             </CardContent>
           </Card>
 
-          <div className="flex gap-3 mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/communities")}
-              className="flex-1"
-            >
+          {/* Privacy & Settings Card */}
+          <Card className="border-0 shadow-md shadow-emerald-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Shield className="w-5 h-5 text-gray-500" />
+                Access & Privacy
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    {form.isPrivate ? <Lock className="w-4 h-4 text-gray-500" /> : <Globe className="w-4 h-4 text-emerald-500" />}
+                    <span className="font-medium text-gray-900">Private Community</span>
+                  </div>
+                  <p className="text-sm text-gray-500 pl-6">
+                    {form.isPrivate ? "Only approved members can see content." : "Anyone can see content and join."}
+                  </p>
+                </div>
+                <Switch checked={form.isPrivate} onCheckedChange={(c) => setForm(p => ({ ...p, isPrivate: c }))} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="maxMembers">Max Members (Leave blank for unlimited)</Label>
+                <Input id="maxMembers" name="maxMembers" type="number" min="1" value={form.maxMembers} onChange={handleChange} placeholder="Unlimited" className="h-11" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Mentor Settings (Conditional) */}
+          {isMentor && (
+            <Card className="border-0 shadow-lg shadow-purple-100 overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-4 bg-purple-100 rounded-bl-3xl opacity-50">
+                <GraduationCap className="w-8 h-8 text-purple-300" />
+              </div>
+              <CardHeader>
+                <CardTitle className="text-purple-900">Mentor Settings</CardTitle>
+                <CardDescription>Monetize your community and set curriculum.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Monthly Fee (BDT)</Label>
+                    <Input name="monthlyFee" type="number" min="0" value={form.monthlyFee} onChange={handleChange} placeholder="0 for Free" className="h-11 border-purple-200 focus-visible:ring-purple-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bkash Number</Label>
+                    <Input name="bkashNumber" value={form.bkashNumber} onChange={handleChange} placeholder="017..." className="h-11 border-purple-200 focus-visible:ring-purple-500" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Classes per Month</Label>
+                  <Input name="classesPerMonth" type="number" min="0" value={form.classesPerMonth} onChange={handleChange} className="h-11 border-purple-200 focus-visible:ring-purple-500" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Monthly Curriculum</Label>
+                  <Textarea name="curriculumDescription" value={form.curriculumDescription} onChange={handleChange} rows={3} placeholder="What will be covered this month?" className="border-purple-200 focus-visible:ring-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-4 pt-4 pb-8">
+            <Button type="button" variant="ghost" onClick={() => navigate("/communities")} className="flex-1 h-12 rounded-full text-gray-500 hover:text-gray-900">
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={saving || user?.credits < CREATION_COST}
-              className="flex-1 bg-purple-600 hover:bg-purple-700"
-            >
-              {saving ? "Creating..." : `Create Community (${CREATION_COST === 0 ? "Free" : `${CREATION_COST} credits`})`}
+            <Button type="submit" disabled={saving || (!isMentor && user?.credits < CREATION_COST)} className="flex-[2] h-12 rounded-full bg-emerald-600 hover:bg-emerald-700 text-lg shadow-lg shadow-emerald-200">
+              {saving ? "Creating..." : "Create Community"}
             </Button>
           </div>
+
         </form>
       </div>
     </div>
