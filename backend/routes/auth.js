@@ -458,6 +458,82 @@ router.put(
   }
 );
 
+// Update User Credits (Admin)
+router.put(
+  "/users/:id/credits",
+  protect,
+  authorize("admin"),
+  async (req, res) => {
+    try {
+      const { amount } = req.body;
+      // amount can be positive (add) or negative (deduct) to adjust balance
+      // OR direct set.
+      // The frontend sends "amount" as a value to ADD/REMOVE?
+      // In frontend I wrote: Add/Remove Credits (Negative to remove)
+      // So it's an increment/decrement operations ideally.
+
+      // Let's support both "set" and "adjust"? 
+      // Simple: The input usually means "Add this amount". 
+
+      const user = await User.findById(req.params.id);
+      if (!user) return res.status(404).json({ success: false, error: "User not found" });
+
+      // Add to existing credits
+      user.credits = (user.credits || 0) + parseInt(amount);
+
+      // Add history
+      user.creditHistory.push({
+        amount: parseInt(amount),
+        type: parseInt(amount) >= 0 ? "purchase" : "usage", // roughly
+        description: "Admin adjustment",
+        createdAt: new Date()
+      });
+
+      await user.save();
+
+      res.json({ success: true, credits: user.credits, message: "Credits updated successfully" });
+    } catch (error) {
+      console.error("Update credits error:", error);
+      res.status(500).json({ success: false, error: "Server error updating credits" });
+    }
+  }
+);
+
+// Update Mentor Subscription (Admin)
+router.put(
+  "/users/:id/subscription",
+  protect,
+  authorize("admin"),
+  async (req, res) => {
+    try {
+      const { planName, isActive, expiry, communitiesBalance, liveClassesBalance } = req.body;
+
+      const user = await User.findById(req.params.id);
+      if (!user) return res.status(404).json({ success: false, error: "User not found" });
+
+      if (user.role !== "mentor") {
+        return res.status(400).json({ success: false, error: "User is not a mentor" });
+      }
+
+      // Update fields
+      user.mentorSubscription.planName = planName;
+      user.mentorSubscription.isActive = isActive;
+      if (expiry) user.mentorSubscription.expiry = new Date(expiry);
+
+      // Update balance
+      if (communitiesBalance !== undefined) user.mentorSubscription.balance.communities = communitiesBalance;
+      if (liveClassesBalance !== undefined) user.mentorSubscription.balance.liveClasses = liveClassesBalance;
+
+      await user.save();
+
+      res.json({ success: true, subscription: user.mentorSubscription, message: "Subscription updated successfully" });
+    } catch (error) {
+      console.error("Update subscription error:", error);
+      res.status(500).json({ success: false, error: "Server error updating subscription" });
+    }
+  }
+);
+
 router.get("/approval-status", protect, async (req, res) => {
   try {
     if (req.user.role !== "mentor") {

@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Check, Trash2 } from "lucide-react";
+import { Bell, Check, Trash2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BASE_URL } from "@/lib/api";
 import useAuth from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -12,28 +13,59 @@ export default function Notifications() {
     const navigate = useNavigate();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [error, setError] = useState(null);
+    const [hasMore, setHasMore] = useState(true);
+    const [page, setPage] = useState(0);
+    const LIMIT = 10;
 
     useEffect(() => {
-        fetchNotifications();
+        fetchNotifications(0);
     }, []);
 
-    const fetchNotifications = async () => {
+    const fetchNotifications = async (skip = 0) => {
         try {
+            if (skip === 0) setLoading(true);
+            else setLoadingMore(true);
+
             const token = localStorage.getItem("token");
-            const res = await fetch(`${BASE_URL}/api/notifications`, {
+            const res = await fetch(`${BASE_URL}/api/notifications?limit=${LIMIT}&skip=${skip}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
+
             if (data.success && Array.isArray(data.notifications)) {
-                setNotifications(data.notifications);
+                if (skip === 0) {
+                    setNotifications(data.notifications);
+                } else {
+                    setNotifications(prev => [...prev, ...data.notifications]);
+                }
+
+                // If we received fewer items than limit, we've reached the end
+                if (data.notifications.length < LIMIT) {
+                    setHasMore(false);
+                } else {
+                    setHasMore(true);
+                }
             } else {
-                setNotifications([]);
+                if (skip === 0) setNotifications([]);
+                setHasMore(false);
             }
         } catch (error) {
             console.error("Failed to load notifications:", error);
-            setNotifications([]);
+            setError("Failed to load notifications. Please try again later.");
+            if (skip === 0) setNotifications([]);
         } finally {
             setLoading(false);
+            setLoadingMore(false);
+        }
+    };
+
+    const loadMore = () => {
+        if (!loadingMore && hasMore) {
+            const newPage = page + 1;
+            setPage(newPage);
+            fetchNotifications(newPage * LIMIT);
         }
     };
 
@@ -91,7 +123,7 @@ export default function Notifications() {
         }
     };
 
-    if (loading) return <div className="p-8 text-center">Loading notifications...</div>;
+    if (loading) return <div className="min-h-[50vh] flex items-center justify-center text-gray-500">Loading notifications...</div>;
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -106,14 +138,22 @@ export default function Notifications() {
                 )}
             </div>
 
-            {notifications.length === 0 ? (
+            {error && (
+                <Alert variant="destructive" className="mb-6">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+
+            {notifications.length === 0 && !error ? (
                 <div className="text-center py-12 bg-white rounded-lg border shadow-sm">
                     <Bell className="w-12 h-12 mx-auto text-gray-300 mb-4" />
                     <h3 className="text-lg font-medium text-gray-900">No notifications</h3>
                     <p className="text-gray-500">You're all caught up!</p>
                 </div>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 pb-8">
                     {notifications.map((notification) => (
                         <Card
                             key={notification._id}
@@ -146,6 +186,19 @@ export default function Notifications() {
                             </CardContent>
                         </Card>
                     ))}
+
+                    {hasMore && (
+                        <div className="text-center mt-6">
+                            <Button
+                                variant="outline"
+                                onClick={loadMore}
+                                disabled={loadingMore}
+                                className="w-full sm:w-auto"
+                            >
+                                {loadingMore ? "Loading..." : "Load Earlier Notifications"}
+                            </Button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

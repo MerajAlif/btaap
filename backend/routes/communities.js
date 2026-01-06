@@ -325,25 +325,58 @@ router.post(
           .json({ success: false, error: "User not found" });
       }
 
-      // Check if user has enough credits
-      if (user.credits < COMMUNITY_CREATION_COST) {
-        return res.status(403).json({
-          success: false,
-          error: `Insufficient credits. You need ${COMMUNITY_CREATION_COST} credits to create a community. You have ${user.credits} credits.`,
-          code: "INSUFFICIENT_CREDITS",
-        });
-      }
+      // Determine role-based cost/limit logic
+      let hasAccess = false;
+      let accessError = "";
 
-      // Check credit expiry
-      if (user.creditExpiry && new Date() > new Date(user.creditExpiry)) {
-        user.credits = 0;
-        user.creditExpiry = null;
-        await user.save();
-        return res.status(403).json({
-          success: false,
-          error: "Your credits have expired. Please purchase more credits.",
-          code: "CREDITS_EXPIRED",
-        });
+      if (req.user.role === "mentor") {
+        // MENTOR LOGIC: Check subscription balance
+        const subscription = user.mentorSubscription;
+
+        // Check general active status
+        if (!subscription || !subscription.isActive) {
+          // Allow if they have initial free balance (default 1 community)
+          if (subscription?.balance?.communities <= 0) {
+            return res.status(403).json({
+              success: false,
+              error: "You need an active subscription to create more communities.",
+              code: "SUBSCRIPTION_REQUIRED"
+            });
+          }
+        }
+
+        // Check balance
+        if (subscription.balance.communities <= 0) {
+          return res.status(403).json({
+            success: false,
+            error: "You have reached your community creation limit for this cycle.",
+            code: "LIMIT_REACHED"
+          });
+        }
+
+        hasAccess = true;
+      } else {
+        // STUDENT LOGIC: Check credits
+        if (user.credits < COMMUNITY_CREATION_COST) {
+          return res.status(403).json({
+            success: false,
+            error: `Insufficient credits. You need ${COMMUNITY_CREATION_COST} credits to create a community. You have ${user.credits} credits.`,
+            code: "INSUFFICIENT_CREDITS",
+          });
+        }
+
+        if (user.creditExpiry && new Date() > new Date(user.creditExpiry)) {
+          user.credits = 0;
+          user.creditExpiry = null;
+          await user.save();
+          return res.status(403).json({
+            success: false,
+            error: "Your credits have expired. Please purchase more credits.",
+            code: "CREDITS_EXPIRED",
+          });
+        }
+
+        hasAccess = true;
       }
 
       // Determine features based on role
@@ -360,7 +393,7 @@ router.post(
         description,
         category,
         tags: tags || [],
-        joinCost: req.user.role === "student" ? 0 : 0, // FIXED JOIN COST REMOVED (Set to 0, or controlled by mentorSettings)
+        joinCost: req.user.role === "student" ? 0 : 0, // FIXED JOIN COST REMOVED
         maxMembers,
         coverImage: coverImage || "",
         settings: settings || {},
@@ -370,17 +403,28 @@ router.post(
         features,
       });
 
-      // ✅ Deduct credits and add to history
-      if (COMMUNITY_CREATION_COST > 0) {
-        user.credits -= COMMUNITY_CREATION_COST;
-        user.creditHistory.push({
-          amount: -COMMUNITY_CREATION_COST,
-          type: "usage",
-          description: `Created community: ${name}`,
-          relatedCommunity: community._id,
-          createdAt: new Date(),
-        });
+      // DEDUCTION LOGIC
+      let message = "Community created successfully!";
+
+      if (req.user.role === "mentor") {
+        // Deduct from mentor balance
+        user.mentorSubscription.balance.communities -= 1;
         await user.save();
+        message = `Community created! You have ${user.mentorSubscription.balance.communities} community creations remaining in this plan.`;
+      } else {
+        // Deduct from student credits
+        if (COMMUNITY_CREATION_COST > 0) {
+          user.credits -= COMMUNITY_CREATION_COST;
+          user.creditHistory.push({
+            amount: -COMMUNITY_CREATION_COST,
+            type: "usage",
+            description: `Created community: ${name}`,
+            relatedCommunity: community._id,
+            createdAt: new Date(),
+          });
+          await user.save();
+          message = `Community created successfully! ${COMMUNITY_CREATION_COST} credits deducted. Remaining: ${user.credits} credits`;
+        }
       }
 
       // Auto-join the creator as a member
@@ -413,7 +457,8 @@ router.post(
         success: true,
         community,
         remainingCredits: user.credits,
-        message: `Community created successfully! ${COMMUNITY_CREATION_COST} credits deducted. Remaining: ${user.credits} credits`,
+        mentorBalance: user.mentorSubscription?.balance,
+        message,
       });
     } catch (error) {
       console.error("Create community error:", error);

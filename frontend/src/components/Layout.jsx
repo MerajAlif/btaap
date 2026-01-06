@@ -17,12 +17,12 @@ export default function Layout({ children }) {
     path !== '/communities/create';
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       {!isCommunityDetail && <Navbar />}
-      <main className={!isCommunityDetail ? "container mx-auto" : ""}>
+      <main className={!isCommunityDetail ? "container mx-auto flex-1" : "flex-1"}>
         {children}
       </main>
       {!isCommunityDetail && <Footer />}
-    </>
+    </div>
   );
 }

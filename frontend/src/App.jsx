@@ -26,6 +26,7 @@ import AdminPaymentPanel from "@/pages/admin/AdminPaymentPanel";
 import AdminComplaints from "@/pages/admin/AdminComplaints";
 import AdminFeedbackPanel from "@/pages/admin/AdminFeedbackPanel";
 import AdminJoinRequestsPanel from "@/pages/admin/AdminJoinRequestsPanel";
+import AdminUsers from "@/pages/admin/AdminUsers";
 import PostsFeed from "@/pages/PostsFeed";
 import Complaints from "@/pages/Complaints";
 import Feedback from "@/pages/Feedback";
@@ -104,8 +105,9 @@ function App() {
           <Route element={<ProtectedRoute requireAdmin />}>
             <Route
               path="/admin"
-              element={<Navigate to="/admin/mentors" replace />}
+              element={<Navigate to="/admin/users" replace />}
             />
+            <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/mentors" element={<MentorApproval />} />
             <Route path="/admin/payments" element={<AdminPaymentPanel />} />
             <Route path="/admin/complaints" element={<AdminComplaints />} />

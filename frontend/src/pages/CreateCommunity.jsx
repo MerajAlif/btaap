@@ -43,10 +43,10 @@ export default function CreateCommunity() {
 
   // Subscription & Limits Check
   const subscriptionActive = user?.mentorSubscription?.isActive;
-  const maxCommunities = user?.mentorSubscription?.maxCommunities || 0;
-  // Fallback to 0 if communities array not yet populated in context
-  const currentCommunities = user?.communities?.length || 0;
-  const limitReached = isMentor && (currentCommunities >= maxCommunities);
+  // Use balance checks for mentors
+  const communitiesBalance = user?.mentorSubscription?.balance?.communities || 0;
+  // If balance > 0, they can create. If <= 0, limit reached.
+  const limitReached = isMentor && (communitiesBalance <= 0);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -59,23 +59,40 @@ export default function CreateCommunity() {
     setError("");
     setSuccess("");
 
-    if (isMentor && !subscriptionActive) {
-      setError("You need an active mentor subscription to create communities.");
-      setSaving(false);
-      return;
+    if (isMentor) {
+      // Mentors don't use credits for communities in this new model
+      if (!subscriptionActive) {
+        // Allow if they have free balance despite inactive sub (rare case, but safe)
+        if (communitiesBalance <= 0) {
+          setError("You need an active mentor subscription to create communities.");
+          setSaving(false);
+          return;
+        }
+      }
+
+      if (limitReached) {
+        setError(`You have used all your community creations for this plan cycle. Please upgrade or renew.`);
+        setSaving(false);
+        return;
+      }
+    } else {
+      // Student Logic (Credits)
+      if (CREATION_COST > 0 && user.credits < CREATION_COST) {
+        setError(`You need ${CREATION_COST} credits to create a community. You have ${user.credits} credits.`);
+        setSaving(false);
+        return;
+      }
     }
 
-    if (isMentor && limitReached) {
-      setError(`You have reached your limit of ${maxCommunities} communities. Please upgrade your plan.`);
-      setSaving(false);
-      return;
-    }
+    if (!isMentor && CREATION_COST > 0) {
+      const confirmed = window.confirm(
+        `Creating a community will cost ${CREATION_COST} credits.\nCurrent Balance: ${user.credits}\n\nContinue?`
+      );
 
-
-    if (CREATION_COST > 0 && user.credits < CREATION_COST) {
-      setError(`You need ${CREATION_COST} credits to create a community. You have ${user.credits} credits.`);
-      setSaving(false);
-      return;
+      if (!confirmed) {
+        setSaving(false);
+        return;
+      }
     }
 
     if (CREATION_COST > 0) {
@@ -170,18 +187,18 @@ export default function CreateCommunity() {
             </div>
             <div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                Community Limit Reached
+                Creation Limit Reached
               </h3>
               <p className="text-gray-500 mb-2 px-4">
-                You have created <strong>{currentCommunities}</strong> out of <strong>{maxCommunities}</strong> allowed communities.
+                You have used all your community creations for the current subscription cycle.
               </p>
               <p className="text-sm text-gray-400 mb-8">
-                Upgrade your plan to create more.
+                Please renew your subscription to create more.
               </p>
               <div className="flex flex-col gap-3">
                 <Button asChild size="lg" className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-full">
                   <Link to="/pricing">
-                    Upgrade Plan
+                    Renew Subscription
                   </Link>
                 </Button>
                 <Button variant="ghost" onClick={() => navigate(-1)}>
@@ -224,20 +241,42 @@ export default function CreateCommunity() {
           </Alert>
         )}
 
-        {/* Pricing Info */}
-        <div className="flex items-center gap-3 text-sm bg-white p-3 rounded-xl shadow-sm border border-emerald-100/50">
-          <div className="bg-emerald-100 p-2 rounded-lg text-emerald-700">
-            <CreditCard className="w-4 h-4" />
+        {/* Pricing/Limit Info */}
+        <div className={`flex items-center gap-3 text-sm p-3 rounded-xl shadow-sm border ${isMentor ? "bg-purple-50 border-purple-100" : "bg-white border-emerald-100/50"}`}>
+          <div className={`${isMentor ? "bg-purple-100 text-purple-700" : "bg-emerald-100 text-emerald-700"} p-2 rounded-lg`}>
+            {isMentor ? <GraduationCap className="w-4 h-4" /> : <CreditCard className="w-4 h-4" />}
           </div>
           <div className="flex-1">
-            <span className="text-gray-600">Creation Cost: </span>
-            <span className="font-semibold text-gray-900">{CREATION_COST === 0 ? "Free" : `${CREATION_COST} credits`}</span>
+            {isMentor ? (
+              <>
+                <span className="text-gray-600">Plan Status: </span>
+                <span className={`font-semibold ${subscriptionActive ? "text-purple-700" : "text-red-500"}`}>
+                  {subscriptionActive ? "Active" : "Expired"}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-gray-600">Creation Cost: </span>
+                <span className="font-semibold text-gray-900">{CREATION_COST === 0 ? "Free" : `${CREATION_COST} credits`}</span>
+              </>
+            )}
           </div>
           <div className="text-right">
-            <span className="text-gray-600">Your Balance: </span>
-            <span className={`font-bold ${user?.credits >= CREATION_COST ? "text-emerald-600" : "text-red-500"}`}>
-              {user?.credits || 0}
-            </span>
+            {isMentor ? (
+              <>
+                <span className="text-gray-600">Communities Remaining: </span>
+                <span className={`font-bold ${user?.mentorSubscription?.balance?.communities > 0 ? "text-purple-700" : "text-red-500"}`}>
+                  {user?.mentorSubscription?.balance?.communities || 0}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-gray-600">Your Balance: </span>
+                <span className={`font-bold ${user?.credits >= CREATION_COST ? "text-emerald-600" : "text-red-500"}`}>
+                  {user?.credits || 0}
+                </span>
+              </>
+            )}
           </div>
         </div>
 

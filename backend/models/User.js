@@ -103,8 +103,12 @@ const userSchema = new mongoose.Schema(
     mentorSubscription: {
       planName: { type: String, default: null },
       expiry: { type: Date, default: null },
-      maxCommunities: { type: Number, default: 1 }, // Default for non-subscribed
-      maxLiveClasses: { type: Number, default: 0 },
+      maxCommunities: { type: Number, default: 1 }, // quota limit
+      maxLiveClasses: { type: Number, default: 0 }, // quota limit
+      balance: {
+        communities: { type: Number, default: 1 }, // remaining balance
+        liveClasses: { type: Number, default: 0 }  // remaining balance
+      },
       features: [{ type: String }],
       isActive: { type: Boolean, default: false }
     },

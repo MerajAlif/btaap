@@ -2,7 +2,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import useAuth from '@/hooks/useAuth';
 
-export default function ProtectedRoute({ requireAdmin = false, requireApprovedMentor = false }) {
+export default function ProtectedRoute({ children, requireAdmin = false, requireApprovedMentor = false }) {
     const { user, loading, isAdmin, isApprovedMentor, isMentor } = useAuth();
 
     if (loading) return null; // or a spinner
@@ -16,5 +16,5 @@ export default function ProtectedRoute({ requireAdmin = false, requireApprovedMe
         if (isMentor && !isApprovedMentor) return <Navigate to="/pending-approval" replace />;
     }
 
-    return <Outlet />;
+    return children ? children : <Outlet />;
 }
